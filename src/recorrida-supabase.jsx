@@ -770,8 +770,8 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
 
   return (
     <>
-      {/* Input oculto — sin capture para permitir galería también */}
-      <input ref={refInput} type="file" accept="image/*" style={{ display: "none" }} onChange={onFoto} />
+      {/* Input oculto — capture=environment abre la cámara trasera directamente */}
+      <input ref={refInput} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={onFoto} />
 
       {/* Overlay de confirmación */}
       {fase === "confirmar" && (
