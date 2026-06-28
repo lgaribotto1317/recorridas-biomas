@@ -109,19 +109,19 @@ function PhotoTile({ src, onPick, label }) {
   );
 }
 
-function CompactPhoto({ src, onPick, onClear }) {
+function CompactPhoto({ src, onPick, onClear, label = "Tomar o adjuntar foto" }) {
   const ref = useRef(null);
   return (
     <div style={{ marginTop: 6 }}>
       <button type="button" onClick={() => ref.current?.click()}
         style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 8, border: `1px solid ${C.blue}`, background: "#fff", color: C.blue, padding: "9px 14px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-        <Camera size={17} /> {src ? "Cambiar foto" : "Tomar o adjuntar foto"}
+        <Camera size={17} /> {src ? "Cambiar foto" : label}
       </button>
-      <input ref={ref} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+      <input ref={ref} type="file" accept="image/*" style={{ display: "none" }}
         onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => onPick(r.result); r.readAsDataURL(f); }} />
       {src && (
         <div style={{ marginTop: 10, display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <img src={src} alt="Antes" style={{ width: 120, height: 90, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.border}` }} />
+          <img src={src} alt={label} style={{ width: 120, height: 90, objectFit: "cover", borderRadius: 8, border: `1px solid ${C.border}` }} />
           <button type="button" onClick={onClear} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: C.muted, background: "none", border: "none", cursor: "pointer" }}><X size={14} /> Quitar</button>
         </div>
       )}
@@ -131,20 +131,27 @@ function CompactPhoto({ src, onPick, onClear }) {
 
 /* ───────── Nuevo hallazgo (carga mínima: solo foto obligatoria) ───────── */
 function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
-  const [f, setF] = useState({ fotoAntes: null, sector: "", sectorResp: "", responsable: "", relevadoPor: defaultRelevadoPor, criticidad: "Media", descripcion: "" });
+  const [f, setF] = useState({ fotoAntes: null, fotoDespues: null, sector: "", sectorResp: "", responsable: "", relevadoPor: defaultRelevadoPor, criticidad: "Media", descripcion: "" });
   const ok = !!f.fotoAntes || !!f.descripcion.trim();
+  // Si además de la foto después están todos los campos requeridos, el hallazgo nace cerrado.
+  const completo = !!f.sector && !!f.responsable && !!f.criticidad && !!f.descripcion.trim();
+  const cierraAhora = !!f.fotoDespues && completo;
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 30, display: "flex", flexDirection: "column", background: C.page }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.border}`, background: C.card, padding: "12px 16px" }}>
         <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 4, color: C.muted, background: "none", border: "none", cursor: "pointer" }}><X size={20} /><span style={{ fontSize: 14 }}>Cancelar</span></button>
         <h2 style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Nuevo hallazgo</h2><span style={{ width: 64 }} />
       </header>
-     <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 14, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <Label>Foto — Antes</Label>
-            <div style={{ marginTop: 6 }}>
-              <CompactPhoto src={f.fotoAntes} onPick={(v) => setF({ ...f, fotoAntes: v })} onClear={() => setF({ ...f, fotoAntes: null })} />
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+            <div>
+              <Label>Foto — Antes</Label>
+              <CompactPhoto src={f.fotoAntes} onPick={(v) => setF({ ...f, fotoAntes: v })} onClear={() => setF({ ...f, fotoAntes: null })} label="Foto antes" />
+            </div>
+            <div>
+              <Label>Foto — Después (opcional)</Label>
+              <CompactPhoto src={f.fotoDespues} onPick={(v) => setF({ ...f, fotoDespues: v })} onClear={() => setF({ ...f, fotoDespues: null })} label="Foto después" />
             </div>
           </div>
           <div style={{ minWidth: 160 }}>
@@ -158,20 +165,25 @@ function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
           <div style={{ flex: "0 0 60%", minWidth: 280, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div><Label>Relevado por</Label><PersonaCombo value={f.relevadoPor} onChange={(v) => setF({ ...f, relevadoPor: v })} placeholder="Quién releva" options={PERSONAS} icon={User} /></div>
             <div><Label>Sector</Label><Select value={f.sector} onChange={(v) => setF({ ...f, sector: v })} placeholder="Sector" options={SECTORES} icon={MapPin} /></div>
-            <div><Label>Sector responsable</Label><Select value={f.sectorResp} onChange={(v) => setF({ ...f, sectorResp: v })} placeholder="Área responsable" options={SECTOR_RESP} /></div>
             <div><Label>Responsable</Label><Select value={f.responsable} onChange={(v) => setF({ ...f, responsable: v })} placeholder="Responsable" options={PERSONAS} icon={User} /></div>
+            <div><Label>Sector responsable</Label><Select value={f.sectorResp} onChange={(v) => setF({ ...f, sectorResp: v })} placeholder="Área responsable" options={SECTOR_RESP} /></div>
           </div>
           <div style={{ flex: 1, minWidth: 220, display: "flex", flexDirection: "column" }}>
             <Label>Descripción</Label>
             <textarea value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })}
-              placeholder="Qué se observó y qué corresponde corregir… (opcional)" style={{ ...fieldStyle, resize: "none", flex: 1, minHeight: 140 }} />
+              placeholder="Qué se observó y qué corresponde corregir… (opcional)" style={{ ...fieldStyle, resize: "none", height: 134 }} />
           </div>
         </div>
+        {cierraAhora && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4", border: `1px solid #BBF7D0`, color: "#15803D", borderRadius: 8, padding: "8px 12px", fontSize: 12.5 }}>
+            <Check size={15} /> Tiene foto después y todos los datos: se va a registrar como «Finalizado».
+          </div>
+        )}
       </div>
       <footer style={{ borderTop: `1px solid ${C.border}`, background: C.card, padding: "12px 16px" }}>
-        <button disabled={!ok} onClick={() => onSave({ ...f, id: Date.now(), planta: PLANTA, estado: "No comenzado", fechaRegistro: hoy(), fechaCierre: null, fotoDespues: null, comentarios: "" })}
-          style={{ width: "100%", borderRadius: 8, padding: "12px 0", fontSize: 14, fontWeight: 600, border: "none", cursor: ok ? "pointer" : "not-allowed", background: ok ? C.blue : C.border, color: ok ? "#fff" : C.muted }}>
-          Registrar hallazgo
+        <button disabled={!ok} onClick={() => onSave({ ...f, id: Date.now(), planta: PLANTA, estado: cierraAhora ? "Finalizado" : "No comenzado", fechaRegistro: hoy(), fechaCierre: cierraAhora ? hoy() : null, comentarios: "" })}
+          style={{ width: "100%", borderRadius: 8, padding: "12px 0", fontSize: 14, fontWeight: 600, border: "none", cursor: ok ? "pointer" : "not-allowed", background: ok ? (cierraAhora ? C.green : C.blue) : C.border, color: ok ? "#fff" : C.muted }}>
+          {cierraAhora ? "Registrar y finalizar" : "Registrar hallazgo"}
         </button>
       </footer>
     </div>
@@ -240,8 +252,8 @@ function Detalle({ h, onClose, onUpdate }) {
           <div className="rec-2col">
             <div><Label>Relevado por</Label><PersonaCombo value={h.relevadoPor} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, relevadoPor: v })} placeholder="Elegir o escribir…" options={PERSONAS} /></div>
             <div><Label>Sector</Label><Select value={h.sector} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sector: v })} placeholder="Elegir…" options={SECTORES} /></div>
-            <div><Label>Sector responsable</Label><Select value={h.sectorResp} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sectorResp: v })} placeholder="Elegir…" options={SECTOR_RESP} /></div>
             <div><Label>Responsable</Label><Select value={h.responsable} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, responsable: v })} placeholder="Elegir…" options={PERSONAS} /></div>
+            <div><Label>Sector responsable</Label><Select value={h.sectorResp} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sectorResp: v })} placeholder="Elegir…" options={SECTOR_RESP} /></div>
           </div>
           <div>
             <Label>Criticidad</Label>
@@ -438,12 +450,13 @@ function Planilla({ items, onUpdate }) {
 
 /* ───────── Tablero ───────── */
 const tipStyle = { background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 };
-function BarCard({ title, data, colorFor, color, height }) {
+function BarCard({ title, data, colorFor, color, height, nota }) {
   const max = Math.max(1, ...data.map((d) => d.v));
   const ticks = Array.from({ length: max + 1 }, (_, i) => i);
   return (
     <div>
       <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.ink }}>{title}</p>
+      {nota && <p style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{nota}</p>}
       <div style={{ height: height || 230, marginTop: 10 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
@@ -474,8 +487,9 @@ function Tablero({ items }) {
   const cc = { "Baja": C.green, "Media": C.amber, "Alta": C.red, "Sin clasif.": C.grey };
   const porEstado = ESTADOS.map((e) => ({ name: e, v: f.filter((h) => h.estado === e).length }));
   const porCrit = [...CRITICIDADES, ""].map((c) => ({ name: c || "Sin clasif.", v: f.filter((h) => h.criticidad === c).length }));
-  const porSector = SECTORES.map((s) => ({ name: s, v: f.filter((h) => h.sector === s).length }));
-  const porResp = PERSONAS.map((p) => ({ name: p, v: f.filter((h) => h.responsable === p).length })).filter((d) => d.v > 0).sort((a, b) => b.v - a.v);
+  // Top 5 por cantidad, mayor a menor (evita que se enciman los nombres)
+  const porSector = SECTORES.map((s) => ({ name: s, v: f.filter((h) => h.sector === s).length })).filter((d) => d.v > 0).sort((a, b) => b.v - a.v).slice(0, 5);
+  const porResp = PERSONAS.map((p) => ({ name: p, v: f.filter((h) => h.responsable === p).length })).filter((d) => d.v > 0).sort((a, b) => b.v - a.v).slice(0, 5);
   const porArea = SECTOR_RESP.map((a) => ({ name: a, v: f.filter((h) => h.sectorResp === a).length }));
 
   const inp = { borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "6px 8px", fontSize: 14, color: C.ink, outline: "none" };
@@ -507,8 +521,8 @@ function Tablero({ items }) {
       <div className="rec-charts">
         <BarCard title="Por estado" data={porEstado} colorFor={(n) => estadoColor[n]} />
         <BarCard title="Por criticidad" data={porCrit} colorFor={(n) => cc[n]} />
-        <BarCard title="Por sector" data={porSector} />
-        <BarCard title="Por responsable" data={porResp} />
+        <BarCard title="Por sector" data={porSector} nota="Top 5 sectores con más hallazgos" />
+        <BarCard title="Por responsable" data={porResp} nota="Top 5 responsables con más hallazgos" />
         <BarCard title="Por área responsable" data={porArea} />
       </div>
     </div>
@@ -704,7 +718,7 @@ function ChangePassword({ onClose }) {
   );
 }
 
-/* ───────── Botón flotante directivo (idle 5s) ───────── */
+/* ───────── Botón flotante directivo (idle configurable) ───────── */
 const IDLE_SEGUNDOS = 7; // ← configurable
 
 function BotonDirectivo({ onSave, defaultRelevadoPor }) {
@@ -727,7 +741,7 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Programa la reaparición 5s después de la última actividad.
+  // Programa la reaparición tras la última actividad.
   // Solo cuenta cuando el overlay está oculto y no hay confirmación abierta.
   const programarAparicion = () => {
     if (visibleRef.current || faseRef.current !== null) return;
@@ -744,8 +758,7 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
     };
   }, []);
 
-  // Cada vez que el overlay se oculta (tocar fuera, sacar foto, registrar, cancelar),
-  // arranca la cuenta para reaparecer tras 5s sin actividad.
+  // Cada vez que el overlay se oculta, arranca la cuenta para reaparecer.
   useEffect(() => {
     if (!visible && fase === null) {
       clearTimeout(timerRef.current);
