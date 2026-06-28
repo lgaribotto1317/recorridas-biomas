@@ -62,7 +62,7 @@ const SEED = [
 
 /* ───────── UI helpers ───────── */
 const Label = ({ children }) => <span style={{ display: "block", fontSize: 10, fontWeight: 600, letterSpacing: ".10em", textTransform: "uppercase", color: C.muted, whiteSpace: "nowrap" }}>{children}</span>;
-const fieldStyle = { marginTop: 4, width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "10px 12px", fontSize: 14, color: C.ink, outline: "none" };
+const fieldStyle = { marginTop: 4, width: "100%", boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "10px 12px", fontSize: 14, color: C.ink, outline: "none" };
 
 function Select({ value, onChange, placeholder, options, icon: Icon }) {
   return (
@@ -936,8 +936,10 @@ export default function App() {
         /* ── Nuevo hallazgo: en mobile, grid de campos ocupa todo el ancho (50%/50%) y la descripción baja debajo ── */
         .rec-nh-grid{ flex:0 0 60% !important; }
         @media(max-width:640px){
-          .rec-nh-grid{ flex:1 1 100% !important; min-width:0 !important; }
-          .rec-nh-desc{ flex:1 1 100% !important; min-width:0 !important; }
+          .rec-nh-row{ display:block !important; }
+          .rec-nh-grid{ width:100% !important; min-width:0 !important; margin-bottom:14px; }
+          .rec-nh-grid > div{ min-width:0 !important; }
+          .rec-nh-desc{ width:100% !important; min-width:0 !important; }
         }
         .rec-list{ display:grid; grid-template-columns:1fr; gap:10px; align-items:start; }
         @media(min-width:680px){ .rec-list{ grid-template-columns:repeat(2,1fr); } }
