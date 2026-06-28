@@ -713,27 +713,41 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
   const [fotoDataUrl, setFotoDataUrl] = useState(null);
   const refInput = useRef(null);
   const timerRef = useRef(null);
+  const visibleRef = useRef(false);
+  const faseRef = useRef(null);
+  visibleRef.current = visible;
+  faseRef.current = fase;
 
-  // Idle timer
+  // Idle timer — reinicia la cuenta con cada actividad, pero NO oculta si el overlay
+  // ya está visible o hay un overlay de confirmación abierto (evita que el tap se pierda)
   const resetTimer = () => {
-    clearTimeout(timerRef.current);
     if (cerrado) return;
-    setVisible(false);
+    if (visibleRef.current || faseRef.current !== null) return; // ya mostrándose: ignorar actividad
+    clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setVisible(true), IDLE_SEGUNDOS * 1000);
   };
 
   useEffect(() => {
     if (cerrado) { setVisible(false); clearTimeout(timerRef.current); return; }
-    const events = ["touchstart", "touchmove", "pointerdown", "pointermove", "keydown", "scroll"];
+    const events = ["touchstart", "pointerdown", "keydown", "scroll"];
     events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
-    resetTimer();
+    timerRef.current = setTimeout(() => setVisible(true), IDLE_SEGUNDOS * 1000);
     return () => {
       events.forEach((e) => window.removeEventListener(e, resetTimer));
       clearTimeout(timerRef.current);
     };
   }, [cerrado]);
 
-  const abrirCamara = () => { setFase(null); setFotoDataUrl(null); refInput.current?.click(); };
+  const abrirCamara = () => { setVisible(false); setFase(null); setFotoDataUrl(null); refInput.current?.click(); };
+
+  // Cuando se cierra el overlay (registró, canceló, o tomó foto), reiniciar la cuenta de idle
+  useEffect(() => {
+    if (cerrado) return;
+    if (!visible && fase === null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setVisible(true), IDLE_SEGUNDOS * 1000);
+    }
+  }, [visible, fase, cerrado]);
 
   const onFoto = (e) => {
     const f = e.target.files?.[0];
@@ -786,16 +800,16 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
 
       {/* Botón flotante — aparece tras idle */}
       {visible && fase === null && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, pointerEvents: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(15,23,42,.18)", backdropFilter: "blur(1px)" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
             <button onClick={abrirCamara}
-              style={{ width: 130, height: 130, borderRadius: 999, border: "none", background: C.blue, color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", boxShadow: "0 6px 28px rgba(0,136,206,.45)", fontSize: 13, fontWeight: 700, lineHeight: 1.2, textAlign: "center", padding: "0 12px" }}>
-              <Camera size={30} />
-              Registrar hallazgo
+              style={{ width: 180, height: 180, borderRadius: 999, border: "none", background: C.blue, color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", boxShadow: "0 8px 36px rgba(0,136,206,.55)", fontSize: 16, fontWeight: 700, lineHeight: 1.2, textAlign: "center", padding: "0 18px" }}>
+              <Camera size={40} />
+              Registrar<br />hallazgo
             </button>
             <button onClick={() => { setCerrado(true); setVisible(false); }}
-              style={{ background: "rgba(255,255,255,.85)", border: `1px solid ${C.border}`, borderRadius: 999, padding: "5px 14px", fontSize: 12, color: C.muted, cursor: "pointer" }}>
-              <X size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />Cerrar
+              style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.92)", border: `1px solid ${C.border}`, borderRadius: 999, padding: "8px 18px", fontSize: 13, color: C.muted, cursor: "pointer" }}>
+              <X size={14} /> Cerrar
             </button>
           </div>
         </div>
