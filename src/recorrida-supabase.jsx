@@ -25,7 +25,7 @@ const SECTOR_RESP = ["Mantenimiento", "Facilities", "Ingeniería", "Proyectos"];
 const PERSONAS = [
   "Sergio Parcheiczuk", "Leonardo Garibotto", "Fernando Alarcon", "Mauricio Mangieri",
   "Leandro Grovas", "Sergio Gallego", "Juan Alasia", "Luciano Fioretti",
-  "Gustavo Pare", "Carlos Rosic", "Santiago Ramos Mejia",
+  "Gustavo Pare", "Carlos Rosic", "Ignacio Nieto",
 ]; // relevadores y responsables salen de la misma lista por ahora
 const CRITICIDADES = ["Baja", "Media", "Alta"];
 const ESTADOS = ["No comenzado", "En curso", "Finalizado", "No aplica"];
@@ -704,7 +704,7 @@ function ChangePassword({ onClose }) {
 }
 
 /* ───────── Botón flotante directivo (idle 5s) ───────── */
-const IDLE_SEGUNDOS = 3; // ← configurable
+const IDLE_SEGUNDOS = 7; // ← configurable
 
 function BotonDirectivo({ onSave, defaultRelevadoPor }) {
   const [esMobile, setEsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width:640px)").matches);
