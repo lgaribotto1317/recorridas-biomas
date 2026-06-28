@@ -803,6 +803,9 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
     </>
   );
 }
+
+/* ───────── App ───────── */
+export default function App() {
   const [sess, setSess] = useState(undefined); // undefined=verificando, null=sin sesión, obj=logueado
   const [me, setMe] = useState(null);          // { nombre, email } de la persona logueada
   const [showPass, setShowPass] = useState(false);
