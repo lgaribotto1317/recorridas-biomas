@@ -538,24 +538,38 @@ function HallazgoCard({ h, onClick, showEstado = true }) {
 
 /* ───────── Vista Kanban (columnas por estado, scroll independiente) ───────── */
 function Kanban({ items, onOpen }) {
+  const scrollRef = useRef(null);
+  const [colIdx, setColIdx] = useState(0);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const colW = el.scrollWidth / ESTADOS.length;
+    setColIdx(Math.round(el.scrollLeft / colW));
+  };
+
   return (
-    <div className="rec-kanban" style={{ flex: 1, minHeight: 0 }}>
-      {ESTADOS.map((e) => {
-        const col = items.filter((h) => h.estado === e);
-        const color = estadoColor[e];
-        return (
-          <div key={e} className="rec-kanban-col">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderTop: `3px solid ${color}`, borderTopLeftRadius: 10, borderTopRightRadius: 10 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink }}>{e}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: color, borderRadius: 999, padding: "1px 8px", minWidth: 20, textAlign: "center" }}>{col.length}</span>
+    <div className="rec-kanban-wrap">
+      {colIdx > 0 && <div className="rec-kanban-arrow rec-kanban-arrow-l">‹</div>}
+      {colIdx < ESTADOS.length - 1 && <div className="rec-kanban-arrow rec-kanban-arrow-r">›</div>}
+      <div ref={scrollRef} className="rec-kanban" style={{ flex: 1, minHeight: 0 }} onScroll={onScroll}>
+        {ESTADOS.map((e) => {
+          const col = items.filter((h) => h.estado === e);
+          const color = estadoColor[e];
+          return (
+            <div key={e} className="rec-kanban-col">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderTop: `3px solid ${color}`, borderTopLeftRadius: 10, borderTopRightRadius: 10 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink }}>{e}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: color, borderRadius: 999, padding: "1px 8px", minWidth: 20, textAlign: "center" }}>{col.length}</span>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 8px 8px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {col.length === 0 ? <p style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "16px 0" }}>—</p>
+                  : col.map((h) => <HallazgoCard key={h.id} h={h} onClick={() => onOpen(h)} showEstado={false} />)}
+              </div>
             </div>
-            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 8px 8px", display: "flex", flexDirection: "column", gap: 8 }}>
-              {col.length === 0 ? <p style={{ fontSize: 12, color: C.muted, textAlign: "center", padding: "16px 0" }}>—</p>
-                : col.map((h) => <HallazgoCard key={h.id} h={h} onClick={() => onOpen(h)} showEstado={false} />)}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -689,8 +703,106 @@ function ChangePassword({ onClose }) {
   );
 }
 
-/* ───────── App ───────── */
-export default function App() {
+/* ───────── Botón flotante directivo (idle 5s) ───────── */
+const IDLE_SEGUNDOS = 5; // ← configurable
+
+function BotonDirectivo({ onSave, defaultRelevadoPor }) {
+  const [visible, setVisible] = useState(false);
+  const [cerrado, setCerrado] = useState(false);
+  const [fase, setFase] = useState(null); // null | "confirmar" | "guardando"
+  const [fotoDataUrl, setFotoDataUrl] = useState(null);
+  const refInput = useRef(null);
+  const timerRef = useRef(null);
+
+  // Idle timer
+  const resetTimer = () => {
+    clearTimeout(timerRef.current);
+    if (cerrado) return;
+    setVisible(false);
+    timerRef.current = setTimeout(() => setVisible(true), IDLE_SEGUNDOS * 1000);
+  };
+
+  useEffect(() => {
+    if (cerrado) { setVisible(false); clearTimeout(timerRef.current); return; }
+    const events = ["touchstart", "touchmove", "pointerdown", "pointermove", "keydown", "scroll"];
+    events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer();
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+      clearTimeout(timerRef.current);
+    };
+  }, [cerrado]);
+
+  const abrirCamara = () => { setFase(null); setFotoDataUrl(null); refInput.current?.click(); };
+
+  const onFoto = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { setFotoDataUrl(r.result); setFase("confirmar"); };
+    r.readAsDataURL(f);
+  };
+
+  const guardar = async (otraFoto) => {
+    setFase("guardando");
+    await onSave({ fotoAntes: fotoDataUrl });
+    setFotoDataUrl(null);
+    if (otraFoto) { setFase(null); refInput.current?.click(); }
+    else { setFase(null); }
+  };
+
+  if (cerrado) return null;
+
+  return (
+    <>
+      {/* Input oculto — sin capture para permitir galería también */}
+      <input ref={refInput} type="file" accept="image/*" style={{ display: "none" }} onChange={onFoto} />
+
+      {/* Overlay de confirmación */}
+      {fase === "confirmar" && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(15,23,42,.80)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: 16 }}>
+          <img src={fotoDataUrl} alt="preview" style={{ maxHeight: "55vh", maxWidth: "100%", borderRadius: 12, objectFit: "contain", boxShadow: "0 8px 32px rgba(0,0,0,.5)" }} />
+          <p style={{ color: "#fff", fontSize: 15, fontWeight: 600, textAlign: "center" }}>¿Registrar este hallazgo?</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 320 }}>
+            <button onClick={() => guardar(false)} style={{ borderRadius: 10, border: "none", padding: "13px 0", fontSize: 15, fontWeight: 700, background: C.blue, color: "#fff", cursor: "pointer" }}>
+              ✓ Registrar
+            </button>
+            <button onClick={() => guardar(true)} style={{ borderRadius: 10, border: `1px solid rgba(255,255,255,.35)`, padding: "13px 0", fontSize: 15, fontWeight: 600, background: "rgba(255,255,255,.12)", color: "#fff", cursor: "pointer" }}>
+              + Registrar y sacar otra foto
+            </button>
+            <button onClick={() => { setFase(null); setFotoDataUrl(null); }} style={{ borderRadius: 10, border: "none", padding: "11px 0", fontSize: 14, fontWeight: 500, background: "none", color: "rgba(255,255,255,.6)", cursor: "pointer" }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {fase === "guardando" && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(15,23,42,.70)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <p style={{ color: "#fff", fontSize: 15, fontWeight: 600 }}>Guardando…</p>
+        </div>
+      )}
+
+      {/* Botón flotante — aparece tras idle */}
+      {visible && fase === null && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, pointerEvents: "auto" }}>
+            <button onClick={abrirCamara}
+              style={{ width: 130, height: 130, borderRadius: 999, border: "none", background: C.blue, color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", boxShadow: "0 6px 28px rgba(0,136,206,.45)", fontSize: 13, fontWeight: 700, lineHeight: 1.2, textAlign: "center", padding: "0 12px" }}>
+              <Camera size={30} />
+              Registrar hallazgo
+            </button>
+            <button onClick={() => { setCerrado(true); setVisible(false); }}
+              style={{ background: "rgba(255,255,255,.85)", border: `1px solid ${C.border}`, borderRadius: 999, padding: "5px 14px", fontSize: 12, color: C.muted, cursor: "pointer" }}>
+              <X size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
   const [sess, setSess] = useState(undefined); // undefined=verificando, null=sin sesión, obj=logueado
   const [me, setMe] = useState(null);          // { nombre, email } de la persona logueada
   const [showPass, setShowPass] = useState(false);
@@ -797,16 +909,29 @@ export default function App() {
         .rec-kanban{
           display:flex; gap:10px; overflow-x:auto; padding:8px 12px 12px;
           scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
-          align-items:stretch;
+          align-items:stretch; scrollbar-width:none;
         }
+        .rec-kanban::-webkit-scrollbar{ display:none; }
         .rec-kanban-col{
-          flex:0 0 calc(100vw - 24px); min-width:0; max-width:calc(100vw - 24px);
-          scroll-snap-align:start; display:flex; flex-direction:column;
+          flex:0 0 calc(100vw - 28px); min-width:0; max-width:calc(100vw - 28px);
+          scroll-snap-align:center; display:flex; flex-direction:column;
           background:#EEF2F6; border-radius:10px;
         }
         @media(min-width:640px){
           .rec-kanban-col{ flex:1 1 270px; max-width:460px; }
         }
+        /* flechas laterales kanban (solo mobile) */
+        .rec-kanban-wrap{ position:relative; flex:1; min-height:0; display:flex; flex-direction:column; }
+        .rec-kanban-arrow{
+          position:absolute; top:50%; transform:translateY(-50%);
+          width:22px; height:44px; display:flex; align-items:center; justify-content:center;
+          background:rgba(255,255,255,0.72); border-radius:999px;
+          color:${C.muted}; font-size:14px; pointer-events:none; z-index:5;
+          box-shadow:0 1px 4px rgba(0,0,0,.10);
+        }
+        .rec-kanban-arrow-l{ left:2px; }
+        .rec-kanban-arrow-r{ right:2px; }
+        @media(min-width:640px){ .rec-kanban-arrow{ display:none; } }
         /* ── Planilla toolbar inline en mobile ── */
         .rec-planilla-toolbar{
           display:flex; align-items:center; gap:8px; flex-wrap:wrap;
@@ -887,6 +1012,17 @@ export default function App() {
 
       {nuevo && <NuevoHallazgo onClose={() => setNuevo(false)} defaultRelevadoPor={me?.nombre || ""} onSave={(h) => { setNuevo(false); api.createHallazgo(h).then(recargar).catch((e) => console.error("create", e)); }} />}
       {sel && <Detalle h={items.find((i) => i.id === sel.id) || sel} onClose={() => setSel(null)} onUpdate={upd} />}
+
+      {/* Botón flotante directivo — solo cuando no hay modal abierto */}
+      {!nuevo && !sel && !showPass && (
+        <BotonDirectivo
+          defaultRelevadoPor={me?.nombre || ""}
+          onSave={(campos) => {
+            const h = { ...campos, id: Date.now(), planta: PLANTA, estado: "No comenzado", fechaRegistro: hoy(), fechaCierre: null, fotoDespues: null, comentarios: "", sector: "", sectorResp: "", responsable: "", relevadoPor: me?.nombre || "", criticidad: "", descripcion: "" };
+            return api.createHallazgo(h).then(recargar).catch((e) => console.error("directivo create", e));
+          }}
+        />
+      )}
     </div>
   );
 }
