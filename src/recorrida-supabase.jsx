@@ -161,8 +161,8 @@ function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
-          <div style={{ flex: "0 0 60%", minWidth: 280, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "stretch" }}>
+          <div style={{ flex: "0 0 60%", minWidth: 280, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignContent: "start" }}>
             <div><Label>Relevado por</Label><PersonaCombo value={f.relevadoPor} onChange={(v) => setF({ ...f, relevadoPor: v })} placeholder="Quién releva" options={PERSONAS} icon={User} /></div>
             <div><Label>Sector</Label><Select value={f.sector} onChange={(v) => setF({ ...f, sector: v })} placeholder="Sector" options={SECTORES} icon={MapPin} /></div>
             <div><Label>Responsable</Label><Select value={f.responsable} onChange={(v) => setF({ ...f, responsable: v })} placeholder="Responsable" options={PERSONAS} icon={User} /></div>
@@ -171,7 +171,7 @@ function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
           <div style={{ flex: 1, minWidth: 220, display: "flex", flexDirection: "column" }}>
             <Label>Descripción</Label>
             <textarea value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })}
-              placeholder="Qué se observó y qué corresponde corregir… (opcional)" style={{ ...fieldStyle, resize: "none", height: 134 }} />
+              placeholder="Qué se observó y qué corresponde corregir… (opcional)" style={{ ...fieldStyle, resize: "none", flex: 1, minHeight: 120 }} />
           </div>
         </div>
         {cierraAhora && (
