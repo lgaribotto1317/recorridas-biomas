@@ -131,7 +131,7 @@ function CompactPhoto({ src, onPick, onClear }) {
 
 /* ───────── Nuevo hallazgo (carga mínima: solo foto obligatoria) ───────── */
 function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
-  const [f, setF] = useState({ fotoAntes: null, sector: "", sectorResp: "", responsable: "", relevadoPor: defaultRelevadoPor, criticidad: "", descripcion: "" });
+  const [f, setF] = useState({ fotoAntes: null, sector: "", sectorResp: "", responsable: "", relevadoPor: defaultRelevadoPor, criticidad: "Media", descripcion: "" });
   const ok = !!f.fotoAntes || !!f.descripcion.trim();
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 30, display: "flex", flexDirection: "column", background: C.page }}>
@@ -140,35 +140,25 @@ function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
         <h2 style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Nuevo hallazgo</h2><span style={{ width: 64 }} />
       </header>
       <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 18 }}>
-        <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 16 }}>
+          <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 16 }}>
           <Label>Foto — Antes</Label>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <CompactPhoto src={f.fotoAntes} onPick={(v) => setF({ ...f, fotoAntes: v })} onClear={() => setF({ ...f, fotoAntes: null })} />
-            <p style={{ margin: 0, fontSize: 11.5, color: C.muted }}>Para registrar alcanza con una foto o una descripción. El resto se completa después.</p>
+            <div style={{ minWidth: 140 }}>
+              <Label>Criticidad</Label>
+              <Select value={f.criticidad} onChange={(v) => setF({ ...f, criticidad: v })} placeholder="Criticidad" options={CRITICIDADES} />
+            </div>
           </div>
         </div>
-        <div className="rec-2col">
+       <div className="rec-2col">
           <div><Label>Relevado por</Label><PersonaCombo value={f.relevadoPor} onChange={(v) => setF({ ...f, relevadoPor: v })} placeholder="Quién releva" options={PERSONAS} icon={User} /></div>
           <div><Label>Sector</Label><Select value={f.sector} onChange={(v) => setF({ ...f, sector: v })} placeholder="Sector" options={SECTORES} icon={MapPin} /></div>
           <div><Label>Sector responsable</Label><Select value={f.sectorResp} onChange={(v) => setF({ ...f, sectorResp: v })} placeholder="Área responsable" options={SECTOR_RESP} /></div>
           <div><Label>Responsable</Label><Select value={f.responsable} onChange={(v) => setF({ ...f, responsable: v })} placeholder="Responsable" options={PERSONAS} icon={User} /></div>
         </div>
-        <div>
-          <Label>Criticidad</Label>
-          <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-            {CRITICIDADES.map((c) => {
-              const active = f.criticidad === c;
-              return <button key={c} type="button" onClick={() => setF({ ...f, criticidad: active ? "" : c })}
-                style={{ borderRadius: 8, padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer",
-                  border: active ? "1px solid transparent" : `1px solid ${C.border}`,
-                  background: active ? critColor[c] : C.card, color: active ? "#fff" : C.ink }}>{c}</button>;
-            })}
-          </div>
-          <p style={{ marginTop: 6, fontSize: 11, color: C.muted }}>Opcional. Si no elegís, queda «Sin clasificar».</p>
-        </div>
         <div><Label>Descripción</Label><textarea rows={4} value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })}
           placeholder="Qué se observó y qué corresponde corregir… (opcional)" style={{ ...fieldStyle, resize: "none" }} /></div>
-      </div>
+          </div>
       <footer style={{ borderTop: `1px solid ${C.border}`, background: C.card, padding: "12px 16px" }}>
         <button disabled={!ok} onClick={() => onSave({ ...f, id: Date.now(), planta: PLANTA, estado: "No comenzado", fechaRegistro: hoy(), fechaCierre: null, fotoDespues: null, comentarios: "" })}
           style={{ width: "100%", borderRadius: 8, padding: "12px 0", fontSize: 14, fontWeight: 600, border: "none", cursor: ok ? "pointer" : "not-allowed", background: ok ? C.blue : C.border, color: ok ? "#fff" : C.muted }}>
@@ -1040,7 +1030,7 @@ export default function App() {
         <BotonDirectivo
           defaultRelevadoPor={me?.nombre || ""}
           onSave={(campos) => {
-            const h = { ...campos, id: Date.now(), planta: PLANTA, estado: "No comenzado", fechaRegistro: hoy(), fechaCierre: null, fotoDespues: null, comentarios: "", sector: "", sectorResp: "", responsable: "", relevadoPor: me?.nombre || "", criticidad: "", descripcion: "" };
+            const h = { ...campos, id: Date.now(), planta: PLANTA, estado: "No comenzado", fechaRegistro: hoy(), fechaCierre: null, fotoDespues: null, comentarios: "", sector: "", sectorResp: "", responsable: "", relevadoPor: me?.nombre || "", criticidad: "Media", descripcion: "" };
             return api.createHallazgo(h).then(recargar).catch((e) => console.error("directivo create", e));
           }}
         />
