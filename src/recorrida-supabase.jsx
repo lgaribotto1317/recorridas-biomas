@@ -778,3 +778,291 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
   };
 
   const guardar = async (otraFoto) => {
+    setFase("guardando");
+    await onSave({ fotoAntes: fotoDataUrl });
+    setFotoDataUrl(null);
+    if (otraFoto) { setFase(null); refInput.current?.click(); }
+    else { setFase(null); }
+  };
+
+  if (!esMobile) return null;
+
+  return (
+    <>
+      {/* Input oculto — capture=environment abre la cámara trasera directamente */}
+      <input ref={refInput} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={onFoto} />
+
+      {/* Overlay de confirmación */}
+      {fase === "confirmar" && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(15,23,42,.80)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: 16 }}>
+          <img src={fotoDataUrl} alt="preview" style={{ maxHeight: "55vh", maxWidth: "100%", borderRadius: 12, objectFit: "contain", boxShadow: "0 8px 32px rgba(0,0,0,.5)" }} />
+          <p style={{ color: "#fff", fontSize: 15, fontWeight: 600, textAlign: "center" }}>¿Registrar este hallazgo?</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 320 }}>
+            <button onClick={() => guardar(false)} style={{ borderRadius: 10, border: "none", padding: "13px 0", fontSize: 15, fontWeight: 700, background: C.blue, color: "#fff", cursor: "pointer" }}>
+              ✓ Registrar
+            </button>
+            <button onClick={() => guardar(true)} style={{ borderRadius: 10, border: `1px solid rgba(255,255,255,.35)`, padding: "13px 0", fontSize: 15, fontWeight: 600, background: "rgba(255,255,255,.12)", color: "#fff", cursor: "pointer" }}>
+              + Registrar y sacar otra foto
+            </button>
+            <button onClick={() => { setFase(null); setFotoDataUrl(null); }} style={{ borderRadius: 10, border: "none", padding: "11px 0", fontSize: 14, fontWeight: 500, background: "none", color: "rgba(255,255,255,.6)", cursor: "pointer" }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {fase === "guardando" && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(15,23,42,.70)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <p style={{ color: "#fff", fontSize: 15, fontWeight: 600 }}>Guardando…</p>
+        </div>
+      )}
+
+      {/* Botón flotante — aparece tras idle */}
+      {visible && fase === null && (
+        <div onClick={() => setVisible(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(15,23,42,.18)", backdropFilter: "blur(1px)" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+            <button onClick={abrirCamara}
+              style={{ width: 180, height: 180, borderRadius: 999, border: "none", background: C.blue, color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", boxShadow: "0 8px 36px rgba(0,136,206,.55)", fontSize: 16, fontWeight: 700, lineHeight: 1.2, textAlign: "center", padding: "0 18px" }}>
+              <Camera size={40} />
+              Registrar<br />hallazgo
+            </button>
+            <p style={{ fontSize: 12, color: "#fff", opacity: .9, margin: 0, textShadow: "0 1px 3px rgba(0,0,0,.4)" }}>Tocá fuera para cerrar</p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ───────── App ───────── */
+export default function App() {
+  const [sess, setSess] = useState(undefined); // undefined=verificando, null=sin sesión, obj=logueado
+  const [me, setMe] = useState(null);          // { nombre, email } de la persona logueada
+  const [showPass, setShowPass] = useState(false);
+  const [items, setItems] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const recargar = () => api.loadHallazgos().then((d) => { setItems(d); setCargando(false); }).catch((e) => { console.error(e); setCargando(false); });
+
+  // Sesión: estado inicial + escucha de cambios (login/logout/refresh)
+  useEffect(() => {
+    api.getSession().then(setSess);
+    const off = api.onAuthChange(setSess);
+    return off;
+  }, []);
+
+  // Al haber sesión: traer la persona logueada, cargar datos y suscribir realtime
+  useEffect(() => {
+    if (!sess) { setMe(null); return; }
+    api.currentPersona().then(setMe).catch(() => setMe(null));
+    recargar();
+    const off = api.subscribe(recargar);
+    return off;
+  }, [sess]);
+
+  // Trazabilidad (audit log)
+  const [audit, setAudit] = useState([]);
+  useEffect(() => {
+    if (!sess) return;
+    api.loadAuditoria().then(setAudit);
+    const off = api.subscribeAuditoria(() => api.loadAuditoria().then(setAudit));
+    return off;
+  }, [sess]);
+  const [tab, setTab] = useState("recorrida");
+  const [flt, setFlt] = useState(F0);
+  const [openFilters, setOpenFilters] = useState(false);
+  const [nuevo, setNuevo] = useState(false);
+  const [sel, setSel] = useState(null);
+  const set = (k, v) => setFlt((p) => ({ ...p, [k]: v }));
+  const activos = ["sector", "sectorResp", "responsable", "criticidad"].filter((k) => flt[k] !== "Todos").length + (flt.desde ? 1 : 0) + (flt.hasta ? 1 : 0) + (flt.soloIncompletos ? 1 : 0);
+
+  const lista = items.filter((h) => {
+    const q = flt.q.trim().toLowerCase();
+    const enTexto = !q || [h.descripcion, h.sector, h.sectorResp, h.responsable, h.relevadoPor, h.comentarios].some((x) => (x || "").toLowerCase().includes(q));
+    return enTexto
+      && (flt.estado === "Todos" || h.estado === flt.estado)
+      && (flt.sector === "Todos" || h.sector === flt.sector)
+      && (flt.sectorResp === "Todos" || h.sectorResp === flt.sectorResp)
+      && (flt.responsable === "Todos" || h.responsable === flt.responsable)
+      && (flt.criticidad === "Todos" || (h.criticidad || "Sin clasificar") === flt.criticidad)
+      && (!flt.soloIncompletos || incompleto(h))
+      && (!flt.desde || h.fechaRegistro >= flt.desde) && (!flt.hasta || h.fechaRegistro <= flt.hasta);
+  }).sort((a, b) => b.fechaRegistro.localeCompare(a.fechaRegistro));
+
+  const upd = (u) => {
+    setItems((arr) => arr.map((i) => (i.id === u.id ? u : i)));
+    setSel((s) => (s && s.id === u.id ? u : s));
+    api.updateHallazgo(u).then(recargar).catch((e) => console.error("update", e));
+  };
+
+  const exportar = () => {
+    const rows = items.map((h) => ({
+      Planta: h.planta, Sector: h.sector, "Sector responsable": h.sectorResp, "Relevado por": h.relevadoPor, Responsable: h.responsable,
+      Criticidad: h.criticidad || "Sin clasificar", Estado: h.estado, "Fecha registro": h.fechaRegistro, "Fecha cierre": h.fechaCierre || "",
+      Descripción: h.descripcion, Comentarios: h.comentarios || "", "Foto antes": h.fotoAntes ? "Sí" : "No", "Foto después": h.fotoDespues ? "Sí" : "No",
+      Completo: incompleto(h) ? "No" : "Sí",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 9 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 40 }, { wch: 30 }, { wch: 10 }, { wch: 11 }, { wch: 9 }];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Recorrida"); XLSX.writeFile(wb, "recorrida_biomas.xlsx");
+  };
+
+  const fSelStyle = { borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "8px", fontSize: 13, outline: "none", appearance: "none" };
+  const FSel = ({ k, label, opts }) => (
+    <select value={flt[k]} onChange={(e) => set(k, e.target.value)} style={{ ...fSelStyle, color: flt[k] === "Todos" ? C.muted : C.ink }}>
+      <option value="Todos">{label}</option>{opts.map((o) => <option key={o} value={o} style={{ color: C.ink }}>{o}</option>)}
+    </select>
+  );
+
+  if (sess === undefined) return (
+    <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: C.page, color: C.muted, fontFamily: FONT, fontSize: 14 }}>Cargando…</div>
+  );
+  if (sess === null) return <Login />;
+
+  return (
+    <div style={{ position: "relative", margin: "0 auto", width: "100%", maxWidth: "100%", height: "100dvh", display: "flex", flexDirection: "column", background: C.page, color: C.ink, fontFamily: FONT }}>
+      <style>{`
+        html,body,#root{ margin:0; padding:0; width:100%; max-width:100%; background:${C.page}; font-family:${FONT}; }
+        body{ display:block; overflow-x:hidden; }
+        #root{ max-width:none; padding:0; text-align:left; min-height:100dvh; }
+        *{ box-sizing:border-box; }
+        .rec-fgrid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        @media(min-width:768px){ .rec-fgrid{ grid-template-columns:repeat(3,1fr); } }
+        @media(min-width:1100px){ .rec-fgrid{ grid-template-columns:repeat(6,1fr); } }
+        .rec-newbtn{ align-self:stretch; }
+        .rec-4{ display:grid; grid-template-columns:1fr; gap:10px; }
+        @media(min-width:768px){ .rec-4{ grid-template-columns:repeat(4,1fr); } }
+        .rec-2col{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        /* ── Nuevo hallazgo: en mobile, grid de campos ocupa todo el ancho (50%/50%) y la descripción baja debajo ── */
+        .rec-nh-grid{ flex:0 0 60% !important; }
+        @media(max-width:640px){
+          .rec-nh-grid{ flex:1 1 100% !important; min-width:0 !important; }
+          .rec-nh-desc{ flex:1 1 100% !important; min-width:0 !important; }
+        }
+        .rec-list{ display:grid; grid-template-columns:1fr; gap:10px; align-items:start; }
+        @media(min-width:680px){ .rec-list{ grid-template-columns:repeat(2,1fr); } }
+        @media(min-width:1024px){ .rec-list{ grid-template-columns:repeat(3,1fr); } }
+        @media(min-width:1500px){ .rec-list{ grid-template-columns:repeat(4,1fr); } }
+        .rec-charts{ display:grid; grid-template-columns:1fr; gap:18px; }
+        @media(min-width:768px){ .rec-charts{ grid-template-columns:1fr 1fr; } }
+        /* ── Kanban mobile: una columna visible con snap ── */
+        .rec-kanban{
+          display:flex; gap:10px; overflow-x:auto; padding:8px 12px 12px;
+          scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+          align-items:stretch; scrollbar-width:none;
+        }
+        .rec-kanban::-webkit-scrollbar{ display:none; }
+        .rec-kanban-col{
+          flex:0 0 calc(100vw - 28px); min-width:0; max-width:calc(100vw - 28px);
+          scroll-snap-align:center; display:flex; flex-direction:column;
+          background:#EEF2F6; border-radius:10px;
+        }
+        @media(min-width:640px){
+          .rec-kanban-col{ flex:1 1 270px; max-width:460px; }
+        }
+        /* flechas laterales kanban (solo mobile) */
+        .rec-kanban-wrap{ position:relative; flex:1; min-height:0; display:flex; flex-direction:column; }
+        .rec-kanban-arrow{
+          position:absolute; top:50%; transform:translateY(-50%);
+          width:22px; height:44px; display:flex; align-items:center; justify-content:center;
+          background:rgba(255,255,255,0.72); border-radius:999px;
+          color:${C.muted}; font-size:14px; pointer-events:none; z-index:5;
+          box-shadow:0 1px 4px rgba(0,0,0,.10);
+        }
+        .rec-kanban-arrow-l{ left:2px; }
+        .rec-kanban-arrow-r{ right:2px; }
+        @media(min-width:640px){ .rec-kanban-arrow{ display:none; } }
+        /* ── Planilla toolbar inline en mobile ── */
+        .rec-planilla-toolbar{
+          display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+          padding:10px 12px; border-bottom:1px solid ${C.border}; background:${C.card};
+        }
+        .rec-planilla-toolbar .rec-toolbar-title{ display:flex; flex-direction:column; }
+        @media(max-width:639px){
+          .rec-planilla-toolbar .rec-toolbar-title{ display:none; }
+        }
+        /* ── Header mobile: ocultar nombre usuario ── */
+        .rec-username{ display:none; }
+        @media(min-width:640px){ .rec-username{ display:flex; } }
+        /* ── Nav: padding-bottom safe area iOS ── */
+        .rec-nav{
+          display:grid; grid-template-columns:repeat(4,1fr);
+          border-top:1px solid ${C.border}; background:${C.card};
+          padding-bottom:env(safe-area-inset-bottom,0px);
+        }
+      `}</style>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, borderBottom: `1px solid ${C.border}`, background: C.card, padding: "8px 12px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, overflow: "hidden" }}>
+          <img src={LOGO} alt="Biomás" style={{ height: 28, width: "auto", flexShrink: 0 }} />
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: C.blue, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Recorrida · {PLANTA}</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <button onClick={exportar} title="Exportar a Excel" style={{ display: "flex", alignItems: "center", gap: 5, borderRadius: 8, border: `1px solid ${C.blue}`, background: C.card, padding: "6px 10px", fontSize: 12, color: C.blue, cursor: "pointer" }}><Download size={15} /> Excel</button>
+          <span style={{ width: 1, height: 20, background: C.border }} />
+          <button onClick={() => setShowPass(true)} title="Cambiar contraseña" style={{ display: "flex", alignItems: "center", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "6px 7px", fontSize: 12, color: C.muted, cursor: "pointer" }}><KeyRound size={15} /></button>
+          <button onClick={() => api.signOut()} title="Cerrar sesión" style={{ display: "flex", alignItems: "center", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "6px 7px", fontSize: 12, color: C.muted, cursor: "pointer" }}><LogOut size={15} /></button>
+        </div>
+      </header>
+
+      {showPass && <ChangePassword onClose={() => setShowPass(false)} />}
+
+      {tab === "recorrida" && <>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 12px 0" }}>
+          <div style={{ position: "relative", flex: 1 }}>
+            <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: C.muted, pointerEvents: "none" }} />
+            <input value={flt.q} onChange={(e) => set("q", e.target.value)} placeholder="Buscar descripción, responsable, sector…"
+              style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "8px 12px 8px 32px", fontSize: 14, color: C.ink, outline: "none" }} />
+          </div>
+          <button onClick={() => setOpenFilters((v) => !v)} style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, borderRadius: 8, border: `1px solid ${openFilters || activos ? C.blue : C.border}`, background: C.card, padding: "8px 10px", fontSize: 12, color: openFilters || activos ? C.blue : C.ink, cursor: "pointer" }}>
+            <SlidersHorizontal size={15} />
+            {activos > 0 && <span style={{ position: "absolute", right: -6, top: -6, height: 16, width: 16, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 999, background: C.orange, fontSize: 10, fontWeight: 700, color: "#fff" }}>{activos}</span>}
+          </button>
+        </div>
+
+        <button onClick={() => setNuevo(true)} className="rec-newbtn" style={{ margin: "8px 12px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, border: "none", background: C.blue, color: "#fff", padding: "11px 0", fontSize: 14, fontWeight: 600, cursor: "pointer" }}><Plus size={18} /> Nuevo hallazgo</button>
+
+        {openFilters && <div style={{ margin: "8px 12px 0", borderRadius: 10, border: `1px solid ${C.border}`, background: C.card, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="rec-fgrid">
+            <FSel k="sector" label="Sector" opts={SECTORES} />
+            <FSel k="sectorResp" label="Sector responsable" opts={SECTOR_RESP} />
+            <FSel k="responsable" label="Responsable" opts={PERSONAS} />
+            <FSel k="criticidad" label="Criticidad" opts={[...CRITICIDADES, "Sin clasificar"]} />
+            <div><Label>Desde</Label><input type="date" value={flt.desde} onChange={(e) => set("desde", e.target.value)} style={{ ...fSelStyle, marginTop: 4, width: "100%" }} /></div>
+            <div><Label>Hasta</Label><input type="date" value={flt.hasta} onChange={(e) => set("hasta", e.target.value)} style={{ ...fSelStyle, marginTop: 4, width: "100%" }} /></div>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.ink, cursor: "pointer" }}>
+            <input type="checkbox" checked={flt.soloIncompletos} onChange={(e) => set("soloIncompletos", e.target.checked)} /> Solo por completar
+          </label>
+          {(activos > 0 || flt.q) && <button onClick={() => setFlt(F0)} style={{ alignSelf: "flex-start", fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer" }}>Limpiar filtros</button>}
+        </div>}
+
+        <Kanban items={lista} onOpen={setSel} />
+      </>}
+
+      {tab === "planilla" && <main style={{ flex: 1, overflow: "hidden" }}><Planilla items={items} onUpdate={upd} /></main>}
+      {tab === "tablero" && <main style={{ flex: 1, overflowY: "auto" }}><Tablero items={items} /></main>}
+      {tab === "trazabilidad" && <main style={{ flex: 1, overflow: "hidden" }}><Trazabilidad items={audit} /></main>}
+
+      <nav className="rec-nav">
+        {[["recorrida", "Hallazgos", ClipboardList], ["planilla", "Planilla", Table2], ["tablero", "Dashboard", BarChart3], ["trazabilidad", "Historial", History]].map(([k, label, Icon]) => (
+          <button key={k} onClick={() => setTab(k)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "9px 0", fontSize: 11, fontWeight: 500, border: "none", background: "none", cursor: "pointer", color: tab === k ? C.blue : C.muted }}>
+            <Icon size={20} /> {label}</button>
+        ))}
+      </nav>
+
+      {nuevo && <NuevoHallazgo onClose={() => setNuevo(false)} defaultRelevadoPor={me?.nombre || ""} onSave={(h) => { setNuevo(false); api.createHallazgo(h).then(recargar).catch((e) => console.error("create", e)); }} />}
+      {sel && <Detalle h={items.find((i) => i.id === sel.id) || sel} onClose={() => setSel(null)} onUpdate={upd} />}
+
+      {/* Botón flotante directivo — solo cuando no hay modal abierto */}
+      {!nuevo && !sel && !showPass && (
+        <BotonDirectivo
+          defaultRelevadoPor={me?.nombre || ""}
+          onSave={(campos) => {
+            const h = { ...campos, id: Date.now(), planta: PLANTA, estado: "No comenzado", fechaRegistro: hoy(), fechaCierre: null, fotoDespues: null, comentarios: "", sector: "", sectorResp: "", responsable: "", relevadoPor: me?.nombre || "", criticidad: "Media", descripcion: "" };
+            return api.createHallazgo(h).then(recargar).catch((e) => console.error("directivo create", e));
+          }}
+        />
+      )}
+    </div>
+  );
+}
