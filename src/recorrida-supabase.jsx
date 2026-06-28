@@ -139,26 +139,35 @@ function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
         <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 4, color: C.muted, background: "none", border: "none", cursor: "pointer" }}><X size={20} /><span style={{ fontSize: 14 }}>Cancelar</span></button>
         <h2 style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>Nuevo hallazgo</h2><span style={{ width: 64 }} />
       </header>
-      <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 16 }}>
-          <Label>Foto — Antes</Label>
-          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <CompactPhoto src={f.fotoAntes} onPick={(v) => setF({ ...f, fotoAntes: v })} onClear={() => setF({ ...f, fotoAntes: null })} />
-            <div style={{ minWidth: 140 }}>
-              <Label>Criticidad</Label>
+     <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 14, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <Label>Foto — Antes</Label>
+            <div style={{ marginTop: 6 }}>
+              <CompactPhoto src={f.fotoAntes} onPick={(v) => setF({ ...f, fotoAntes: v })} onClear={() => setF({ ...f, fotoAntes: null })} />
+            </div>
+          </div>
+          <div style={{ minWidth: 160 }}>
+            <Label>Criticidad</Label>
+            <div style={{ marginTop: 6 }}>
               <Select value={f.criticidad} onChange={(v) => setF({ ...f, criticidad: v })} placeholder="Criticidad" options={CRITICIDADES} />
             </div>
           </div>
         </div>
-       <div className="rec-2col">
-          <div><Label>Relevado por</Label><PersonaCombo value={f.relevadoPor} onChange={(v) => setF({ ...f, relevadoPor: v })} placeholder="Quién releva" options={PERSONAS} icon={User} /></div>
-          <div><Label>Sector</Label><Select value={f.sector} onChange={(v) => setF({ ...f, sector: v })} placeholder="Sector" options={SECTORES} icon={MapPin} /></div>
-          <div><Label>Sector responsable</Label><Select value={f.sectorResp} onChange={(v) => setF({ ...f, sectorResp: v })} placeholder="Área responsable" options={SECTOR_RESP} /></div>
-          <div><Label>Responsable</Label><Select value={f.responsable} onChange={(v) => setF({ ...f, responsable: v })} placeholder="Responsable" options={PERSONAS} icon={User} /></div>
-        </div>
-        <div><Label>Descripción</Label><textarea rows={4} value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })}
-          placeholder="Qué se observó y qué corresponde corregir… (opcional)" style={{ ...fieldStyle, resize: "none" }} /></div>
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <div style={{ flex: "0 0 60%", minWidth: 280, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div><Label>Relevado por</Label><PersonaCombo value={f.relevadoPor} onChange={(v) => setF({ ...f, relevadoPor: v })} placeholder="Quién releva" options={PERSONAS} icon={User} /></div>
+            <div><Label>Sector</Label><Select value={f.sector} onChange={(v) => setF({ ...f, sector: v })} placeholder="Sector" options={SECTORES} icon={MapPin} /></div>
+            <div><Label>Sector responsable</Label><Select value={f.sectorResp} onChange={(v) => setF({ ...f, sectorResp: v })} placeholder="Área responsable" options={SECTOR_RESP} /></div>
+            <div><Label>Responsable</Label><Select value={f.responsable} onChange={(v) => setF({ ...f, responsable: v })} placeholder="Responsable" options={PERSONAS} icon={User} /></div>
           </div>
+          <div style={{ flex: 1, minWidth: 220, display: "flex", flexDirection: "column" }}>
+            <Label>Descripción</Label>
+            <textarea value={f.descripcion} onChange={(e) => setF({ ...f, descripcion: e.target.value })}
+              placeholder="Qué se observó y qué corresponde corregir… (opcional)" style={{ ...fieldStyle, resize: "none", flex: 1, minHeight: 140 }} />
+          </div>
+        </div>
+      </div>
       <footer style={{ borderTop: `1px solid ${C.border}`, background: C.card, padding: "12px 16px" }}>
         <button disabled={!ok} onClick={() => onSave({ ...f, id: Date.now(), planta: PLANTA, estado: "No comenzado", fechaRegistro: hoy(), fechaCierre: null, fotoDespues: null, comentarios: "" })}
           style={{ width: "100%", borderRadius: 8, padding: "12px 0", fontSize: 14, fontWeight: 600, border: "none", cursor: ok ? "pointer" : "not-allowed", background: ok ? C.blue : C.border, color: ok ? "#fff" : C.muted }}>
