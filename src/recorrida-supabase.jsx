@@ -142,8 +142,10 @@ function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
       <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 16 }}>
           <Label>Foto — Antes</Label>
-          <CompactPhoto src={f.fotoAntes} onPick={(v) => setF({ ...f, fotoAntes: v })} onClear={() => setF({ ...f, fotoAntes: null })} />
-          <p style={{ marginTop: 8, fontSize: 11.5, color: C.muted }}>Para registrar alcanza con una foto o una descripción. El resto se completa después.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <CompactPhoto src={f.fotoAntes} onPick={(v) => setF({ ...f, fotoAntes: v })} onClear={() => setF({ ...f, fotoAntes: null })} />
+            <p style={{ margin: 0, fontSize: 11.5, color: C.muted }}>Para registrar alcanza con una foto o una descripción. El resto se completa después.</p>
+          </div>
         </div>
         <div className="rec-2col">
           <div><Label>Relevado por</Label><PersonaCombo value={f.relevadoPor} onChange={(v) => setF({ ...f, relevadoPor: v })} placeholder="Quién releva" options={PERSONAS} icon={User} /></div>
