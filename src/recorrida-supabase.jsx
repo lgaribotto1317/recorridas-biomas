@@ -358,15 +358,18 @@ function Planilla({ items, onUpdate }) {
   );
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 16px", borderBottom: `1px solid ${C.border}`, background: C.card }}>
-        <div><p style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Completar en planilla</p><p style={{ fontSize: 11.5, color: C.muted }}>Editá las celdas; las amarillas faltan.</p></div>
-        <div style={{ position: "relative" }}>
+      <div className="rec-planilla-toolbar">
+        <div className="rec-toolbar-title">
+          <p style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Completar en planilla</p>
+          <p style={{ fontSize: 11.5, color: C.muted }}>Editá las celdas; las amarillas faltan.</p>
+        </div>
+        <div style={{ position: "relative", flex: 1, minWidth: 120 }}>
           <Search size={14} style={{ position: "absolute", left: 8, top: 9, color: C.muted, pointerEvents: "none" }} />
-          <input value={pf.q} onChange={(e) => setPf({ ...pf, q: e.target.value })} placeholder="Buscar texto…" style={searchStyle} />
+          <input value={pf.q} onChange={(e) => setPf({ ...pf, q: e.target.value })} placeholder="Buscar texto…" style={{ ...searchStyle, width: "100%" }} />
         </div>
         <span style={{ fontSize: 12, color: C.muted, whiteSpace: "nowrap" }}>{rows.length} hallazgo(s)</span>
-        {activos && <button onClick={() => { setPf(PF0); setSolo(false); }} style={{ fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer" }}>Limpiar</button>}
-        <button onClick={() => setSolo((v) => !v)} style={{ marginLeft: "auto", borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 500, cursor: "pointer", border: `1px solid ${solo ? C.blue : C.border}`, background: solo ? C.blue : C.card, color: solo ? "#fff" : C.ink }}>Solo por completar</button>
+        <button onClick={() => setSolo((v) => !v)} style={{ borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 500, cursor: "pointer", border: `1px solid ${solo ? C.blue : C.border}`, background: solo ? C.blue : C.card, color: solo ? "#fff" : C.ink, whiteSpace: "nowrap" }}>Solo por completar</button>
+        {activos && <button onClick={() => { setPf(PF0); setSolo(false); }} style={{ fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>Limpiar</button>}
       </div>
       <div style={{ flex: 1, overflow: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "max-content", minWidth: "100%" }}>
@@ -511,12 +514,12 @@ function HallazgoCard({ h, onClick, showEstado = true }) {
 /* ───────── Vista Kanban (columnas por estado, scroll independiente) ───────── */
 function Kanban({ items, onOpen }) {
   return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex", gap: 10, overflowX: "auto", padding: "8px 12px 12px", alignItems: "stretch" }}>
+    <div className="rec-kanban" style={{ flex: 1, minHeight: 0 }}>
       {ESTADOS.map((e) => {
         const col = items.filter((h) => h.estado === e);
         const color = estadoColor[e];
         return (
-          <div key={e} style={{ flex: "1 1 270px", minWidth: 270, maxWidth: 460, minHeight: 0, display: "flex", flexDirection: "column", background: "#EEF2F6", borderRadius: 10 }}>
+          <div key={e} className="rec-kanban-col">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderTop: `3px solid ${color}`, borderTopLeftRadius: 10, borderTopRightRadius: 10 }}>
               <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink }}>{e}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: color, borderRadius: 999, padding: "1px 8px", minWidth: 20, textAlign: "center" }}>{col.length}</span>
@@ -764,18 +767,49 @@ export default function App() {
         @media(min-width:1500px){ .rec-list{ grid-template-columns:repeat(4,1fr); } }
         .rec-charts{ display:grid; grid-template-columns:1fr; gap:18px; }
         @media(min-width:768px){ .rec-charts{ grid-template-columns:1fr 1fr; } }
+        /* ── Kanban mobile: una columna visible con snap ── */
+        .rec-kanban{
+          display:flex; gap:10px; overflow-x:auto; padding:8px 12px 12px;
+          scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+          align-items:stretch;
+        }
+        .rec-kanban-col{
+          flex:0 0 calc(100vw - 24px); min-width:0; max-width:calc(100vw - 24px);
+          scroll-snap-align:start; display:flex; flex-direction:column;
+          background:#EEF2F6; border-radius:10px;
+        }
+        @media(min-width:640px){
+          .rec-kanban-col{ flex:1 1 270px; max-width:460px; }
+        }
+        /* ── Planilla toolbar inline en mobile ── */
+        .rec-planilla-toolbar{
+          display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+          padding:10px 12px; border-bottom:1px solid ${C.border}; background:${C.card};
+        }
+        .rec-planilla-toolbar .rec-toolbar-title{ display:flex; flex-direction:column; }
+        @media(max-width:639px){
+          .rec-planilla-toolbar .rec-toolbar-title{ display:none; }
+        }
+        /* ── Header mobile: ocultar nombre usuario ── */
+        .rec-username{ display:none; }
+        @media(min-width:640px){ .rec-username{ display:flex; } }
+        /* ── Nav: padding-bottom safe area iOS ── */
+        .rec-nav{
+          display:grid; grid-template-columns:repeat(4,1fr);
+          border-top:1px solid ${C.border}; background:${C.card};
+          padding-bottom:env(safe-area-inset-bottom,0px);
+        }
       `}</style>
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderBottom: `1px solid ${C.border}`, background: C.card, padding: "8px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          <img src={LOGO} alt="Biomás" style={{ height: 30, width: "auto" }} />
-          <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.blue, whiteSpace: "nowrap" }}>Recorrida · {PLANTA}</p>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, borderBottom: `1px solid ${C.border}`, background: C.card, padding: "8px 12px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, overflow: "hidden" }}>
+          <img src={LOGO} alt="Biomás" style={{ height: 28, width: "auto", flexShrink: 0 }} />
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: C.blue, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Recorrida · {PLANTA}</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          {me?.nombre && <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: C.muted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><User size={14} /> {me.nombre}</span>}
-          <button onClick={exportar} title="Exportar a Excel" style={{ display: "flex", alignItems: "center", gap: 6, borderRadius: 8, border: `1px solid ${C.blue}`, background: C.card, padding: "7px 10px", fontSize: 12, color: C.blue, cursor: "pointer" }}><Download size={15} /> Excel</button>
-          <span style={{ width: 1, height: 22, background: C.border, margin: "0 2px" }} />
-          <button onClick={() => setShowPass(true)} title="Cambiar contraseña" style={{ display: "flex", alignItems: "center", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "7px", fontSize: 12, color: C.muted, cursor: "pointer" }}><KeyRound size={15} /></button>
-          <button onClick={() => api.signOut()} title="Cerrar sesión" style={{ display: "flex", alignItems: "center", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "7px", fontSize: 12, color: C.muted, cursor: "pointer" }}><LogOut size={15} /></button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <button onClick={exportar} title="Exportar a Excel" style={{ display: "flex", alignItems: "center", gap: 5, borderRadius: 8, border: `1px solid ${C.blue}`, background: C.card, padding: "6px 10px", fontSize: 12, color: C.blue, cursor: "pointer" }}><Download size={15} /> Excel</button>
+          <span style={{ width: 1, height: 20, background: C.border }} />
+          <button onClick={() => setShowPass(true)} title="Cambiar contraseña" style={{ display: "flex", alignItems: "center", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "6px 7px", fontSize: 12, color: C.muted, cursor: "pointer" }}><KeyRound size={15} /></button>
+          <button onClick={() => api.signOut()} title="Cerrar sesión" style={{ display: "flex", alignItems: "center", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "6px 7px", fontSize: 12, color: C.muted, cursor: "pointer" }}><LogOut size={15} /></button>
         </div>
       </header>
 
@@ -818,8 +852,8 @@ export default function App() {
       {tab === "tablero" && <main style={{ flex: 1, overflowY: "auto" }}><Tablero items={items} /></main>}
       {tab === "trazabilidad" && <main style={{ flex: 1, overflow: "hidden" }}><Trazabilidad items={audit} /></main>}
 
-      <nav style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderTop: `1px solid ${C.border}`, background: C.card }}>
-        {[["recorrida", "Hallazgos", ClipboardList], ["planilla", "Planilla", Table2], ["tablero", "Dashboard", BarChart3], ["trazabilidad", "Trazabilidad", History]].map(([k, label, Icon]) => (
+      <nav className="rec-nav">
+        {[["recorrida", "Hallazgos", ClipboardList], ["planilla", "Planilla", Table2], ["tablero", "Dashboard", BarChart3], ["trazabilidad", "Historial", History]].map(([k, label, Icon]) => (
           <button key={k} onClick={() => setTab(k)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "9px 0", fontSize: 11, fontWeight: 500, border: "none", background: "none", cursor: "pointer", color: tab === k ? C.blue : C.muted }}>
             <Icon size={20} /> {label}</button>
         ))}
