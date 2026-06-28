@@ -708,46 +708,42 @@ const IDLE_SEGUNDOS = 5; // ← configurable
 
 function BotonDirectivo({ onSave, defaultRelevadoPor }) {
   const [visible, setVisible] = useState(true);
-  const [cerrado, setCerrado] = useState(false);
   const [fase, setFase] = useState(null); // null | "confirmar" | "guardando"
   const [fotoDataUrl, setFotoDataUrl] = useState(null);
   const refInput = useRef(null);
   const timerRef = useRef(null);
-  const visibleRef = useRef(false);
+  const visibleRef = useRef(true);
   const faseRef = useRef(null);
   visibleRef.current = visible;
   faseRef.current = fase;
 
-  // Idle timer — reinicia la cuenta con cada actividad, pero NO oculta si el overlay
-  // ya está visible o hay un overlay de confirmación abierto (evita que el tap se pierda)
-  const resetTimer = () => {
-    if (cerrado) return;
-    if (visibleRef.current || faseRef.current !== null) return; // ya mostrándose: ignorar actividad
+  // Programa la reaparición 5s después de la última actividad.
+  // Solo cuenta cuando el overlay está oculto y no hay confirmación abierta.
+  const programarAparicion = () => {
+    if (visibleRef.current || faseRef.current !== null) return;
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setVisible(true), IDLE_SEGUNDOS * 1000);
   };
 
   useEffect(() => {
-    if (cerrado) { setVisible(false); clearTimeout(timerRef.current); return; }
     const events = ["touchstart", "pointerdown", "keydown", "scroll"];
-    events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
-    timerRef.current = setTimeout(() => setVisible(true), IDLE_SEGUNDOS * 1000);
+    events.forEach((e) => window.addEventListener(e, programarAparicion, { passive: true }));
     return () => {
-      events.forEach((e) => window.removeEventListener(e, resetTimer));
+      events.forEach((e) => window.removeEventListener(e, programarAparicion));
       clearTimeout(timerRef.current);
     };
-  }, [cerrado]);
+  }, []);
 
-  const abrirCamara = () => { setVisible(false); setFase(null); setFotoDataUrl(null); refInput.current?.click(); };
-
-  // Cuando se cierra el overlay (registró, canceló, o tomó foto), reiniciar la cuenta de idle
+  // Cada vez que el overlay se oculta (tocar fuera, sacar foto, registrar, cancelar),
+  // arranca la cuenta para reaparecer tras 5s sin actividad.
   useEffect(() => {
-    if (cerrado) return;
     if (!visible && fase === null) {
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setVisible(true), IDLE_SEGUNDOS * 1000);
     }
-  }, [visible, fase, cerrado]);
+  }, [visible, fase]);
+
+  const abrirCamara = () => { setVisible(false); setFase(null); setFotoDataUrl(null); refInput.current?.click(); };
 
   const onFoto = (e) => {
     const f = e.target.files?.[0];
@@ -765,8 +761,6 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
     if (otraFoto) { setFase(null); refInput.current?.click(); }
     else { setFase(null); }
   };
-
-  if (cerrado) return null;
 
   return (
     <>
@@ -800,17 +794,15 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
 
       {/* Botón flotante — aparece tras idle */}
       {visible && fase === null && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(15,23,42,.18)", backdropFilter: "blur(1px)" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+        <div onClick={() => setVisible(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(15,23,42,.18)", backdropFilter: "blur(1px)" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
             <button onClick={abrirCamara}
               style={{ width: 180, height: 180, borderRadius: 999, border: "none", background: C.blue, color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", boxShadow: "0 8px 36px rgba(0,136,206,.55)", fontSize: 16, fontWeight: 700, lineHeight: 1.2, textAlign: "center", padding: "0 18px" }}>
               <Camera size={40} />
               Registrar<br />hallazgo
             </button>
-            <button onClick={() => { setCerrado(true); setVisible(false); }}
-              style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.92)", border: `1px solid ${C.border}`, borderRadius: 999, padding: "8px 18px", fontSize: 13, color: C.muted, cursor: "pointer" }}>
-              <X size={14} /> Cerrar
-            </button>
+            <p style={{ fontSize: 12, color: "#fff", opacity: .9, margin: 0, textShadow: "0 1px 3px rgba(0,0,0,.4)" }}>Tocá fuera para cerrar</p>
           </div>
         </div>
       )}
