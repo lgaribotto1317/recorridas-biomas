@@ -707,7 +707,7 @@ function ChangePassword({ onClose }) {
 const IDLE_SEGUNDOS = 5; // ← configurable
 
 function BotonDirectivo({ onSave, defaultRelevadoPor }) {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const [cerrado, setCerrado] = useState(false);
   const [fase, setFase] = useState(null); // null | "confirmar" | "guardando"
   const [fotoDataUrl, setFotoDataUrl] = useState(null);
