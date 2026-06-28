@@ -145,7 +145,7 @@ function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
           <CompactPhoto src={f.fotoAntes} onPick={(v) => setF({ ...f, fotoAntes: v })} onClear={() => setF({ ...f, fotoAntes: null })} />
           <p style={{ marginTop: 8, fontSize: 11.5, color: C.muted }}>Para registrar alcanza con una foto o una descripción. El resto se completa después.</p>
         </div>
-        <div className="rec-4">
+        <div className="rec-2col">
           <div><Label>Relevado por</Label><PersonaCombo value={f.relevadoPor} onChange={(v) => setF({ ...f, relevadoPor: v })} placeholder="Quién releva" options={PERSONAS} icon={User} /></div>
           <div><Label>Sector</Label><Select value={f.sector} onChange={(v) => setF({ ...f, sector: v })} placeholder="Sector" options={SECTORES} icon={MapPin} /></div>
           <div><Label>Sector responsable</Label><Select value={f.sectorResp} onChange={(v) => setF({ ...f, sectorResp: v })} placeholder="Área responsable" options={SECTOR_RESP} /></div>
@@ -179,7 +179,7 @@ function NuevoHallazgo({ onClose, onSave, defaultRelevadoPor = "" }) {
 
 /* ───────── Detalle ───────── */
 function Detalle({ h, onClose, onUpdate }) {
-  const ref = useRef(null);
+  const refDespues = useRef(null);
   const [coment, setComent] = useState(h.comentarios || "");
   const [desc, setDesc] = useState(h.descripcion || "");
   const dirty = coment !== (h.comentarios || "") || desc !== (h.descripcion || "");
@@ -190,13 +190,15 @@ function Detalle({ h, onClose, onUpdate }) {
   const attachDespues = (dataUrl) => patch({ fotoDespues: dataUrl });
   const finalizar = () => { if (!faltan.length) patch({ estado: "Finalizado", fechaCierre: hoy() }); };
 
-  const row = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 };
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 30, display: "flex", flexDirection: "column", background: C.page }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${C.border}`, background: C.card, padding: "12px 16px" }}>
-        <button onClick={onClose} style={{ color: C.muted, background: "none", border: "none", cursor: "pointer" }}><ChevronLeft size={22} /></button>
-        <h2 style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{h.sector || "Sin sector"} · {h.planta}</h2>
+      {/* Header siempre visible con "Volver" */}
+      <header style={{ display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${C.border}`, background: C.card, padding: "12px 16px", flexShrink: 0 }}>
+        <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 4, color: C.muted, background: "none", border: "none", cursor: "pointer" }}><ChevronLeft size={22} /><span style={{ fontSize: 14 }}>Volver</span></button>
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginLeft: 4 }}>{h.sector || "Sin sector"} · {h.planta}</h2>
       </header>
+
+      {/* Scroll area */}
       <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", gap: 12 }}>
           <figure style={{ flex: 1, margin: 0 }}>
@@ -208,12 +210,14 @@ function Detalle({ h, onClose, onUpdate }) {
           <figure style={{ flex: 1, margin: 0 }}>
             <Label>Después</Label>
             <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card }}>
-              {h.fotoDespues ? <img src={h.fotoDespues} alt="Después" style={{ height: "100%", width: "100%", objectFit: "cover" }} />
-                : <button onClick={() => !cerrado && ref.current?.click()} disabled={cerrado}
+              {h.fotoDespues
+                ? <img src={h.fotoDespues} alt="Después" style={{ height: "100%", width: "100%", objectFit: "cover" }} />
+                : <button onClick={() => !cerrado && refDespues.current?.click()} disabled={cerrado}
                     style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: C.muted, background: "none", border: "none", cursor: cerrado ? "default" : "pointer", opacity: cerrado ? .4 : 1 }}>
-                    <Camera size={22} /><span style={{ fontSize: 11 }}>Capturar</span></button>}
+                    <Camera size={22} /><span style={{ fontSize: 11 }}>Capturar o galería</span></button>}
             </div>
-            <input ref={ref} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+            {/* Sin capture="environment" → el browser ofrece cámara + galería */}
+            <input ref={refDespues} type="file" accept="image/*" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => attachDespues(r.result); r.readAsDataURL(f); }} />
           </figure>
         </div>
@@ -224,9 +228,9 @@ function Detalle({ h, onClose, onUpdate }) {
           {incompleto({ ...h, descripcion: desc }) && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 500, background: "#FFF7ED", color: "#B45309" }}><AlertTriangle size={13} /> Por completar</span>}
         </div>
 
-        {/* Edición de datos (también desde acá) */}
+        {/* Edición de datos */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div className="rec-4">
+          <div className="rec-2col">
             <div><Label>Relevado por</Label><PersonaCombo value={h.relevadoPor} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, relevadoPor: v })} placeholder="Elegir o escribir…" options={PERSONAS} /></div>
             <div><Label>Sector</Label><Select value={h.sector} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sector: v })} placeholder="Elegir…" options={SECTORES} /></div>
             <div><Label>Sector responsable</Label><Select value={h.sectorResp} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sectorResp: v })} placeholder="Elegir…" options={SECTOR_RESP} /></div>
@@ -245,21 +249,35 @@ function Detalle({ h, onClose, onUpdate }) {
           {dirty && <button onClick={() => patch({})} style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "8px 12px", fontSize: 12, color: C.ink, cursor: "pointer" }}><Save size={14} /> Guardar cambios</button>}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: `1px solid ${C.border}`, paddingTop: 16 }}>
-          {!cerrado && <>
-            {faltan.length > 0 && <div style={{ display: "flex", gap: 6, background: "#FFF7ED", color: "#B45309", borderRadius: 8, padding: "8px 12px", fontSize: 12.5 }}>
-              <AlertTriangle size={15} /> Para finalizar falta: {faltan.map((k) => ({ sector: "sector", responsable: "responsable", criticidad: "criticidad", descripcion: "descripción" }[k])).join(", ")}.</div>}
-            {h.estado === "No comenzado" && <button onClick={() => patch({ estado: "En curso" })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.amber}`, background: "#FFF7ED", color: "#B45309", padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>Marcar «En curso»</button>}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => ref.current?.click()} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, border: `1px solid ${C.blue}`, background: "#fff", color: C.blue, padding: "11px 0", fontSize: 14, fontWeight: 600, cursor: "pointer" }}><Camera size={17} /> {h.fotoDespues ? "Cambiar foto «después»" : "Cargar foto «después»"}</button>
-              <button disabled={faltan.length > 0} onClick={finalizar} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, border: "none", padding: "11px 0", fontSize: 14, fontWeight: 600, cursor: faltan.length > 0 ? "not-allowed" : "pointer", background: faltan.length > 0 ? C.border : C.green, color: faltan.length > 0 ? C.muted : "#fff" }}><Check size={17} /> Finalizar</button>
-            </div>
-            <button onClick={() => patch({ estado: "No aplica", fechaCierre: hoy() })} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.muted, padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}><Ban size={16} /> No aplica (descartar)</button>
-          </>}
-          {h.estado === "Finalizado" && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#F0FDF4", color: "#15803D", borderRadius: 8, padding: "12px 0", fontSize: 14 }}><Check size={17} /> Hallazgo resuelto</div>}
-          {h.estado === "No aplica" && <button onClick={() => patch({ estado: "No comenzado", fechaCierre: null })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.muted, padding: "10px 0", fontSize: 14, cursor: "pointer" }}>Reactivar hallazgo</button>}
-        </div>
+        {/* Marcar en curso + No aplica (dentro del scroll, no críticos) */}
+        {!cerrado && h.estado === "No comenzado" && (
+          <button onClick={() => patch({ estado: "En curso" })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.amber}`, background: "#FFF7ED", color: "#B45309", padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>Marcar «En curso»</button>
+        )}
+        {!cerrado && (
+          <button onClick={() => patch({ estado: "No aplica", fechaCierre: hoy() })} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.muted, padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}><Ban size={16} /> No aplica (descartar)</button>
+        )}
+        {h.estado === "Finalizado" && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#F0FDF4", color: "#15803D", borderRadius: 8, padding: "12px 0", fontSize: 14 }}><Check size={17} /> Hallazgo resuelto</div>}
+        {h.estado === "No aplica" && <button onClick={() => patch({ estado: "No comenzado", fechaCierre: null })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.muted, padding: "10px 0", fontSize: 14, cursor: "pointer" }}>Reactivar hallazgo</button>}
       </div>
+
+      {/* Footer sticky: foto después + guardar/finalizar — siempre visible */}
+      {!cerrado && (
+        <footer style={{ position: "relative", borderTop: `1px solid ${C.border}`, background: C.card, padding: "10px 16px", display: "flex", gap: 8, flexShrink: 0 }}>
+          {faltan.length > 0 && (
+            <div style={{ position: "absolute", bottom: "100%", left: 0, right: 0, background: "#FFF7ED", borderTop: `1px solid #FDE68A`, padding: "6px 16px", fontSize: 12, color: "#B45309", display: "flex", gap: 6, alignItems: "center" }}>
+              <AlertTriangle size={13} /> Falta: {faltan.map((k) => ({ sector: "sector", responsable: "responsable", criticidad: "criticidad", descripcion: "descripción" }[k])).join(", ")}
+            </div>
+          )}
+          <button onClick={() => refDespues.current?.click()}
+            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 8, border: `1px solid ${C.blue}`, background: "#fff", color: C.blue, padding: "11px 0", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            <Camera size={16} /> {h.fotoDespues ? "Cambiar foto" : "Foto después"}
+          </button>
+          <button onClick={finalizar} disabled={faltan.length > 0}
+            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 8, border: "none", padding: "11px 0", fontSize: 13, fontWeight: 600, cursor: faltan.length > 0 ? "default" : "pointer", background: faltan.length > 0 ? C.amber : C.green, color: "#fff" }}>
+            {faltan.length > 0 ? <><Save size={16} /> Guardar</> : <><Check size={16} /> Finalizar</>}
+          </button>
+        </footer>
+      )}
     </div>
   );
 }
@@ -761,6 +779,7 @@ export default function App() {
         .rec-newbtn{ align-self:stretch; }
         .rec-4{ display:grid; grid-template-columns:1fr; gap:10px; }
         @media(min-width:768px){ .rec-4{ grid-template-columns:repeat(4,1fr); } }
+        .rec-2col{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
         .rec-list{ display:grid; grid-template-columns:1fr; gap:10px; align-items:start; }
         @media(min-width:680px){ .rec-list{ grid-template-columns:repeat(2,1fr); } }
         @media(min-width:1024px){ .rec-list{ grid-template-columns:repeat(3,1fr); } }
