@@ -704,7 +704,7 @@ function ChangePassword({ onClose }) {
 }
 
 /* ───────── Botón flotante directivo (idle 5s) ───────── */
-const IDLE_SEGUNDOS = 5; // ← configurable
+const IDLE_SEGUNDOS = 3; // ← configurable
 
 function BotonDirectivo({ onSave, defaultRelevadoPor }) {
   const [visible, setVisible] = useState(true);
