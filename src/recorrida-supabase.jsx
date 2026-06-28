@@ -182,6 +182,7 @@ function Detalle({ h, onClose, onUpdate }) {
   const refDespues = useRef(null);
   const [coment, setComent] = useState(h.comentarios || "");
   const [desc, setDesc] = useState(h.descripcion || "");
+  const [zoomSrc, setZoomSrc] = useState(null);
   const dirty = coment !== (h.comentarios || "") || desc !== (h.descripcion || "");
   const cerrado = h.estado === "Finalizado" || h.estado === "No aplica";
   const faltan = REQ.filter((k) => k === "descripcion" ? !desc : !h[k]);
@@ -190,33 +191,38 @@ function Detalle({ h, onClose, onUpdate }) {
   const attachDespues = (dataUrl) => patch({ fotoDespues: dataUrl });
   const finalizar = () => { if (!faltan.length) patch({ estado: "Finalizado", fechaCierre: hoy() }); };
 
+  // Auto-guardar desc/comentarios al volver si hay cambios pendientes
+  const handleClose = () => { if (dirty) patch({}); onClose(); };
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 30, display: "flex", flexDirection: "column", background: C.page }}>
+      {zoomSrc && <Lightbox src={zoomSrc} onClose={() => setZoomSrc(null)} />}
+
       {/* Header siempre visible con "Volver" */}
       <header style={{ display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${C.border}`, background: C.card, padding: "12px 16px", flexShrink: 0 }}>
-        <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 4, color: C.muted, background: "none", border: "none", cursor: "pointer" }}><ChevronLeft size={22} /><span style={{ fontSize: 14 }}>Volver</span></button>
+        <button onClick={handleClose} style={{ display: "flex", alignItems: "center", gap: 4, color: C.muted, background: "none", border: "none", cursor: "pointer" }}><ChevronLeft size={22} /><span style={{ fontSize: 14 }}>Volver</span></button>
         <h2 style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginLeft: 4 }}>{h.sector || "Sin sector"} · {h.planta}</h2>
       </header>
 
-      {/* Scroll area */}
-      <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Scroll area — padding-bottom para que No aplica no quede tapado por el footer */}
+      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: 16, paddingBottom: cerrado ? 16 : 100, display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", gap: 12 }}>
           <figure style={{ flex: 1, margin: 0 }}>
             <Label>Antes</Label>
-            <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}` }}>
+            <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}`, cursor: h.fotoAntes ? "zoom-in" : "default" }}
+              onClick={() => h.fotoAntes && setZoomSrc(h.fotoAntes)}>
               {h.fotoAntes ? <img src={h.fotoAntes} alt="Antes" style={{ height: "100%", width: "100%", objectFit: "cover" }} /> : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.grey }}><ImageIcon size={22} /></div>}
             </div>
           </figure>
           <figure style={{ flex: 1, margin: 0 }}>
             <Label>Después</Label>
-            <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card }}>
+            <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, cursor: h.fotoDespues ? "zoom-in" : "default" }}
+              onClick={() => h.fotoDespues ? setZoomSrc(h.fotoDespues) : (!cerrado && refDespues.current?.click())}>
               {h.fotoDespues
                 ? <img src={h.fotoDespues} alt="Después" style={{ height: "100%", width: "100%", objectFit: "cover" }} />
-                : <button onClick={() => !cerrado && refDespues.current?.click()} disabled={cerrado}
-                    style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: C.muted, background: "none", border: "none", cursor: cerrado ? "default" : "pointer", opacity: cerrado ? .4 : 1 }}>
-                    <Camera size={22} /><span style={{ fontSize: 11 }}>Capturar o galería</span></button>}
+                : <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: C.muted, opacity: cerrado ? .4 : 1 }}>
+                    <Camera size={22} /><span style={{ fontSize: 11 }}>Capturar o galería</span></div>}
             </div>
-            {/* Sin capture="environment" → el browser ofrece cámara + galería */}
             <input ref={refDespues} type="file" accept="image/*" style={{ display: "none" }}
               onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => attachDespues(r.result); r.readAsDataURL(f); }} />
           </figure>
@@ -246,10 +252,9 @@ function Detalle({ h, onClose, onUpdate }) {
           </div>
           <div><Label>Descripción</Label><textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Qué corresponde corregir…" style={{ ...fieldStyle, resize: "none" }} /></div>
           <div><Label>Comentarios (los completa el responsable)</Label><textarea rows={3} value={coment} onChange={(e) => setComent(e.target.value)} placeholder="Avance, cotizaciones, motivo si no aplica…" style={{ ...fieldStyle, resize: "none" }} /></div>
-          {dirty && <button onClick={() => patch({})} style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "8px 12px", fontSize: 12, color: C.ink, cursor: "pointer" }}><Save size={14} /> Guardar cambios</button>}
         </div>
 
-        {/* Marcar en curso + No aplica (dentro del scroll, no críticos) */}
+        {/* Marcar en curso + No aplica (dentro del scroll, por encima del footer) */}
         {!cerrado && h.estado === "No comenzado" && (
           <button onClick={() => patch({ estado: "En curso" })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.amber}`, background: "#FFF7ED", color: "#B45309", padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>Marcar «En curso»</button>
         )}
@@ -260,22 +265,24 @@ function Detalle({ h, onClose, onUpdate }) {
         {h.estado === "No aplica" && <button onClick={() => patch({ estado: "No comenzado", fechaCierre: null })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.muted, padding: "10px 0", fontSize: 14, cursor: "pointer" }}>Reactivar hallazgo</button>}
       </div>
 
-      {/* Footer sticky: foto después + guardar/finalizar — siempre visible */}
+      {/* Footer sticky: aviso + foto después + guardar/finalizar — siempre visible */}
       {!cerrado && (
-        <footer style={{ position: "relative", borderTop: `1px solid ${C.border}`, background: C.card, padding: "10px 16px", display: "flex", gap: 8, flexShrink: 0 }}>
+        <footer style={{ borderTop: `1px solid ${C.border}`, background: C.card, flexShrink: 0 }}>
           {faltan.length > 0 && (
-            <div style={{ position: "absolute", bottom: "100%", left: 0, right: 0, background: "#FFF7ED", borderTop: `1px solid #FDE68A`, padding: "6px 16px", fontSize: 12, color: "#B45309", display: "flex", gap: 6, alignItems: "center" }}>
+            <div style={{ background: "#FFF7ED", borderBottom: `1px solid #FDE68A`, padding: "6px 16px", fontSize: 12, color: "#B45309", display: "flex", gap: 6, alignItems: "center" }}>
               <AlertTriangle size={13} /> Falta: {faltan.map((k) => ({ sector: "sector", responsable: "responsable", criticidad: "criticidad", descripcion: "descripción" }[k])).join(", ")}
             </div>
           )}
-          <button onClick={() => refDespues.current?.click()}
-            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 8, border: `1px solid ${C.blue}`, background: "#fff", color: C.blue, padding: "11px 0", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            <Camera size={16} /> {h.fotoDespues ? "Cambiar foto" : "Foto después"}
-          </button>
-          <button onClick={finalizar} disabled={faltan.length > 0}
-            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 8, border: "none", padding: "11px 0", fontSize: 13, fontWeight: 600, cursor: faltan.length > 0 ? "default" : "pointer", background: faltan.length > 0 ? C.amber : C.green, color: "#fff" }}>
-            {faltan.length > 0 ? <><Save size={16} /> Guardar</> : <><Check size={16} /> Finalizar</>}
-          </button>
+          <div style={{ padding: "10px 16px", display: "flex", gap: 8 }}>
+            <button onClick={() => refDespues.current?.click()}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 8, border: `1px solid ${C.blue}`, background: "#fff", color: C.blue, padding: "11px 0", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <Camera size={16} /> {h.fotoDespues ? "Cambiar foto" : "Foto después"}
+            </button>
+            <button onClick={finalizar} disabled={faltan.length > 0}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 8, border: "none", padding: "11px 0", fontSize: 13, fontWeight: 600, cursor: faltan.length > 0 ? "default" : "pointer", background: faltan.length > 0 ? C.amber : C.green, color: "#fff" }}>
+              {faltan.length > 0 ? <><Save size={16} /> Guardar</> : <><Check size={16} /> Finalizar</>}
+            </button>
+          </div>
         </footer>
       )}
     </div>
