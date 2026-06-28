@@ -518,7 +518,7 @@ function Tablero({ items }) {
 function HallazgoCard({ h, onClick, showEstado = true }) {
   const inc = incompleto(h);
   return (
-    <button onClick={onClick} style={{ width: "100%", display: "flex", alignItems: "stretch", overflow: "hidden", borderRadius: 10, border: `1px solid ${C.border}`, background: C.card, textAlign: "left", cursor: "pointer", padding: 0 }}>
+    <button onClick={onClick} style={{ width: "100%", flexShrink: 0, display: "flex", alignItems: "stretch", overflow: "hidden", borderRadius: 10, border: `1px solid ${C.border}`, background: C.card, textAlign: "left", cursor: "pointer", padding: 0 }}>
       <span style={{ width: 6, flexShrink: 0, background: critColor[h.criticidad] }} />
       <span style={{ margin: 8, height: 56, width: 56, flexShrink: 0, overflow: "hidden", borderRadius: 6, background: C.page }}>{h.fotoAntes && <img src={h.fotoAntes} alt="" style={{ height: "100%", width: "100%", objectFit: "cover" }} />}</span>
       <span style={{ minWidth: 0, flex: 1, padding: "8px 12px 8px 0" }}>
@@ -707,6 +707,7 @@ function ChangePassword({ onClose }) {
 const IDLE_SEGUNDOS = 3; // ← configurable
 
 function BotonDirectivo({ onSave, defaultRelevadoPor }) {
+  const [esMobile, setEsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width:640px)").matches);
   const [visible, setVisible] = useState(true);
   const [fase, setFase] = useState(null); // null | "confirmar" | "guardando"
   const [fotoDataUrl, setFotoDataUrl] = useState(null);
@@ -716,6 +717,14 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
   const faseRef = useRef(null);
   visibleRef.current = visible;
   faseRef.current = fase;
+
+  // Solo en celular: escuchar cambios de ancho (rotación, resize)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width:640px)");
+    const handler = (e) => setEsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   // Programa la reaparición 5s después de la última actividad.
   // Solo cuenta cuando el overlay está oculto y no hay confirmación abierta.
@@ -761,6 +770,8 @@ function BotonDirectivo({ onSave, defaultRelevadoPor }) {
     if (otraFoto) { setFase(null); refInput.current?.click(); }
     else { setFase(null); }
   };
+
+  if (!esMobile) return null;
 
   return (
     <>
