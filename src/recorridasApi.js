@@ -37,6 +37,7 @@ function rowToUi(h, m, fotosByH) {
   };
   return {
     id: h.id,
+    numero: h.numero,
     planta: PLANTA,
     sector: m.sector.name[h.sector_id] || "",
     sectorResp: m.area.name[h.area_resp_id] || "",
@@ -75,7 +76,7 @@ function uiToRow(ui, m) {
 export async function loadHallazgos() {
   const m = await loadMaps();
   const [{ data: hs }, { data: fs }] = await Promise.all([
-    supabase.from("hallazgos").select("*").order("fecha_registro", { ascending: false }),
+    supabase.from("hallazgos").select("*").order("fecha_registro", { ascending: false }).order("numero", { ascending: false }),
     supabase.from("fotos").select("*"),
   ]);
   const fotosByH = {};

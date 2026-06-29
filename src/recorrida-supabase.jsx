@@ -43,6 +43,7 @@ const estadoColor = { "No comenzado": C.red, "En curso": C.amber, "Finalizado": 
 
 const incompleto = (h) => REQ.some((k) => !h[k]);
 const hoy = () => new Date().toISOString().slice(0, 10);
+const fmtNro = (n) => (n == null ? "" : "#" + String(n).padStart(4, "0"));
 const ph = (t) => `data:image/svg+xml;utf8,` + encodeURIComponent(
   `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'><rect width='400' height='300' fill='#E2E8F0'/>
    <text x='50%' y='50%' fill='#94A3B8' font-family='sans-serif' font-size='20' text-anchor='middle' dominant-baseline='middle'>${t}</text></svg>`);
@@ -214,7 +215,7 @@ function Detalle({ h, onClose, onUpdate }) {
       {/* Header siempre visible con "Volver" */}
       <header style={{ display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid ${C.border}`, background: C.card, padding: "12px 16px", flexShrink: 0 }}>
         <button onClick={handleClose} style={{ display: "flex", alignItems: "center", gap: 4, color: C.muted, background: "none", border: "none", cursor: "pointer" }}><ChevronLeft size={22} /><span style={{ fontSize: 14 }}>Volver</span></button>
-        <h2 style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginLeft: 4 }}>{h.sector || "Sin sector"} · {h.planta}</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginLeft: 4 }}>{h.numero != null && <span style={{ color: C.muted, fontVariantNumeric: "tabular-nums" }}>{fmtNro(h.numero)} · </span>}{h.sector || "Sin sector"} · {h.planta}</h2>
       </header>
 
       {/* Scroll area — padding-bottom para que No aplica no quede tapado por el footer */}
@@ -412,6 +413,7 @@ function Planilla({ items, onUpdate }) {
       <div style={{ flex: 1, overflow: "auto" }}>
         <table style={{ borderCollapse: "collapse", width: "max-content", minWidth: "100%" }}>
           <thead><tr>
+            <th style={th}>N°</th>
             <HF k="relevadoPor" label="Relevado por" opts={PERSONAS} />
             <th style={th}>Registro</th>
             <HF k="criticidad" label="Criticidad" opts={[...CRITICIDADES, "Sin clasificar"]} />
@@ -426,6 +428,7 @@ function Planilla({ items, onUpdate }) {
           <tbody>
             {rows.map((h) => (
               <tr key={h.id} style={{ background: C.card }}>
+                <td style={{ ...td, fontSize: 12, fontWeight: 600, color: C.muted, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtNro(h.numero)}</td>
                 <td style={td}><OptCombo v={h.relevadoPor} set={(v) => onUpdate({ ...h, relevadoPor: v })} ph2="Relevado por" opts={PERSONAS} miss={false} /></td>
                 <td style={{ ...td, fontSize: 12, color: C.muted, whiteSpace: "nowrap" }}>{h.fechaRegistro}</td>
                 <td style={td}><Opt v={h.criticidad} set={(v) => onUpdate({ ...h, criticidad: v })} ph2="Sin clasificar" opts={CRITICIDADES} miss={!h.criticidad} /></td>
@@ -538,7 +541,7 @@ function HallazgoCard({ h, onClick, showEstado = true }) {
       <span style={{ margin: 8, height: 56, width: 56, flexShrink: 0, overflow: "hidden", borderRadius: 6, background: C.page }}>{h.fotoAntes && <img src={h.fotoAntes} alt="" style={{ height: "100%", width: "100%", objectFit: "cover" }} />}</span>
       <span style={{ minWidth: 0, flex: 1, padding: "8px 12px 8px 0" }}>
         <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>{h.sector || "Sin sector"}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.muted }}>{h.numero != null && <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtNro(h.numero)} · </span>}{h.sector || "Sin sector"}</span>
           {showEstado && <span style={{ flexShrink: 0, borderRadius: 6, padding: "2px 7px", fontSize: 10, fontWeight: 600, background: estadoPill[h.estado].bg, color: estadoPill[h.estado].fg }}>{h.estado}</span>}
         </span>
         <span style={{ marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: 13.5, color: h.descripcion ? C.ink : C.grey }}>{h.descripcion || "Sin descripción"}</span>
@@ -897,13 +900,14 @@ export default function App() {
 
   const exportar = () => {
     const rows = items.map((h) => ({
+      "N°": fmtNro(h.numero),
       Planta: h.planta, Sector: h.sector, "Sector responsable": h.sectorResp, "Relevado por": h.relevadoPor, Responsable: h.responsable,
       Criticidad: h.criticidad || "Sin clasificar", Estado: h.estado, "Fecha registro": h.fechaRegistro, "Fecha cierre": h.fechaCierre || "",
       Descripción: h.descripcion, Comentarios: h.comentarios || "", "Foto antes": h.fotoAntes ? "Sí" : "No", "Foto después": h.fotoDespues ? "Sí" : "No",
       Completo: incompleto(h) ? "No" : "Sí",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [{ wch: 9 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 40 }, { wch: 30 }, { wch: 10 }, { wch: 11 }, { wch: 9 }];
+    ws["!cols"] = [{ wch: 8 }, { wch: 9 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 40 }, { wch: 30 }, { wch: 10 }, { wch: 11 }, { wch: 9 }];
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Recorrida"); XLSX.writeFile(wb, "recorrida_biomas.xlsx");
   };
 
