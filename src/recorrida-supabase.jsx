@@ -29,7 +29,8 @@ const PERSONAS = [
 ]; // relevadores y responsables salen de la misma lista por ahora
 const CRITICIDADES = ["Baja", "Media", "Alta"];
 const ESTADOS = ["No comenzado", "En curso", "Finalizado", "No aplica"];
-const REQ = ["sector", "responsable", "criticidad", "descripcion"]; // requeridos para finalizar
+const REQ = ["sector", "responsable", "criticidad", "descripcion"]; // requeridos: carga completa (tarjetas/Dashboard/Excel/filtro "Por completar")
+const REQ_FIN = ["sector", "responsable", "criticidad", "comentarios"]; // requeridos para FINALIZAR (caso B): obligatorios + comentario final, SIN descripción
 
 const critColor = { Baja: C.green, Media: C.amber, Alta: C.red, "": C.grey };
 const critText  = { Baja: "#15803D", Media: "#B45309", Alta: "#B91C1C", "": C.muted };
@@ -197,9 +198,18 @@ function Detalle({ h, onClose, onUpdate }) {
   const [coment, setComent] = useState(h.comentarios || "");
   const [desc, setDesc] = useState(h.descripcion || "");
   const [zoomSrc, setZoomSrc] = useState(null);
+  // Layout 70/30 sólo en PC; en celular se apila (mobile queda como estaba).
+  const [esMobile, setEsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width:640px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width:640px)");
+    const fn = (e) => setEsMobile(e.matches);
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
   const dirty = coment !== (h.comentarios || "") || desc !== (h.descripcion || "");
   const cerrado = h.estado === "Finalizado" || h.estado === "No aplica";
-  const faltan = REQ.filter((k) => k === "descripcion" ? !desc : !h[k]);
+  // Gate de FINALIZAR (caso B): sector + responsable + criticidad + comentario final. La descripción NO bloquea.
+  const faltan = REQ_FIN.filter((k) => k === "comentarios" ? !coment.trim() : !h[k]);
 
   const patch = (extra) => onUpdate({ ...h, descripcion: desc, comentarios: coment, ...extra });
   const attachDespues = (dataUrl) => patch({ fotoDespues: dataUrl });
@@ -207,6 +217,86 @@ function Detalle({ h, onClose, onUpdate }) {
 
   // Auto-guardar desc/comentarios al volver si hay cambios pendientes
   const handleClose = () => { if (dirty) patch({}); onClose(); };
+
+  // ── Bloques reutilizables (mismo contenido; en mobile/PC cambia sólo la disposición) ──
+  const bFotos = (
+    <div style={{ display: "flex", gap: 12 }}>
+      <figure style={{ flex: 1, margin: 0 }}>
+        <Label>Antes</Label>
+        <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}`, cursor: h.fotoAntes ? "zoom-in" : "default" }}
+          onClick={() => h.fotoAntes && setZoomSrc(h.fotoAntes)}>
+          {h.fotoAntes ? <img src={h.fotoAntes} alt="Antes" style={{ height: "100%", width: "100%", objectFit: "cover" }} /> : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.grey }}><ImageIcon size={22} /></div>}
+        </div>
+      </figure>
+      <figure style={{ flex: 1, margin: 0 }}>
+        <Label>Después</Label>
+        <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, cursor: h.fotoDespues ? "zoom-in" : "default" }}
+          onClick={() => h.fotoDespues ? setZoomSrc(h.fotoDespues) : (!cerrado && refDespues.current?.click())}>
+          {h.fotoDespues
+            ? <img src={h.fotoDespues} alt="Después" style={{ height: "100%", width: "100%", objectFit: "cover" }} />
+            : <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: C.muted, opacity: cerrado ? .4 : 1 }}>
+                <Camera size={22} /><span style={{ fontSize: 11 }}>Capturar o galería</span></div>}
+        </div>
+        <input ref={refDespues} type="file" accept="image/*" style={{ display: "none" }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => attachDespues(r.result); r.readAsDataURL(f); }} />
+      </figure>
+    </div>
+  );
+
+  const bPills = (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <span style={{ borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 500, background: estadoPill[h.estado].bg, color: estadoPill[h.estado].fg }}>{h.estado}</span>
+      <span style={{ borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 500, background: "#fff", border: `1px solid ${C.border}`, color: critText[h.criticidad] }}>Criticidad {h.criticidad || "Sin clasificar"}</span>
+      {incompleto({ ...h, descripcion: desc }) && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 500, background: "#FFF7ED", color: "#B45309" }}><AlertTriangle size={13} /> Por completar</span>}
+    </div>
+  );
+
+  const bDesc = (<div><Label>Descripción</Label><textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Qué corresponde corregir…" style={{ ...fieldStyle, resize: "none" }} /></div>);
+  const bComent = (<div><Label>Comentarios (los completa el responsable)</Label><textarea rows={3} value={coment} onChange={(e) => setComent(e.target.value)} placeholder="Avance, cotizaciones, motivo si no aplica…" style={{ ...fieldStyle, resize: "none" }} /></div>);
+
+  // Campos mobile: 4 selectores en rec-2col + criticidad en 3 botones (igual que antes).
+  const bCamposMobile = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="rec-2col">
+        <div><Label>Relevado por</Label><PersonaCombo value={h.relevadoPor} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, relevadoPor: v })} placeholder="Elegir o escribir…" options={PERSONAS} /></div>
+        <div><Label>Sector</Label><Select value={h.sector} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sector: v })} placeholder="Elegir…" options={SECTORES} /></div>
+        <div><Label>Responsable</Label><Select value={h.responsable} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, responsable: v })} placeholder="Elegir…" options={PERSONAS} /></div>
+        <div><Label>Sector responsable</Label><Select value={h.sectorResp} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sectorResp: v })} placeholder="Elegir…" options={SECTOR_RESP} /></div>
+      </div>
+      <div>
+        <Label>Criticidad</Label>
+        <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+          {CRITICIDADES.map((c) => { const active = h.criticidad === c;
+            return <button key={c} onClick={() => onUpdate({ ...h, descripcion: desc, comentarios: coment, criticidad: active ? "" : c })}
+              style={{ borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 500, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${C.border}`, background: active ? critColor[c] : C.card, color: active ? "#fff" : C.ink }}>{c}</button>; })}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Campos PC: 5 selectores apilados en la columna del 30%; criticidad como dropdown.
+  const bCamposPC = (
+    <>
+      <div><Label>Relevado por</Label><PersonaCombo value={h.relevadoPor} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, relevadoPor: v })} placeholder="Elegir o escribir…" options={PERSONAS} /></div>
+      <div><Label>Sector</Label><Select value={h.sector} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sector: v })} placeholder="Elegir…" options={SECTORES} /></div>
+      <div><Label>Sector responsable</Label><Select value={h.sectorResp} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sectorResp: v })} placeholder="Elegir…" options={SECTOR_RESP} /></div>
+      <div><Label>Responsable</Label><Select value={h.responsable} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, responsable: v })} placeholder="Elegir…" options={PERSONAS} /></div>
+      <div><Label>Criticidad</Label><Select value={h.criticidad} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, criticidad: v })} placeholder="Elegir…" options={CRITICIDADES} /></div>
+    </>
+  );
+
+  const bAcciones = (
+    <>
+      {!cerrado && h.estado === "No comenzado" && (
+        <button onClick={() => patch({ estado: "En curso" })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.amber}`, background: "#FFF7ED", color: "#B45309", padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>Marcar «En curso»</button>
+      )}
+      {!cerrado && (
+        <button onClick={() => patch({ estado: "No aplica", fechaCierre: hoy() })} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.muted, padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}><Ban size={16} /> No aplica (descartar)</button>
+      )}
+      {h.estado === "Finalizado" && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#F0FDF4", color: "#15803D", borderRadius: 8, padding: "12px 0", fontSize: 14 }}><Check size={17} /> Hallazgo resuelto</div>}
+      {h.estado === "No aplica" && <button onClick={() => patch({ estado: "No comenzado", fechaCierre: null })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.muted, padding: "10px 0", fontSize: 14, cursor: "pointer" }}>Reactivar hallazgo</button>}
+    </>
+  );
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 30, display: "flex", flexDirection: "column", background: C.page }}>
@@ -220,63 +310,30 @@ function Detalle({ h, onClose, onUpdate }) {
 
       {/* Scroll area — padding-bottom para que No aplica no quede tapado por el footer */}
       <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: 16, paddingBottom: cerrado ? 16 : 100, display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", gap: 12 }}>
-          <figure style={{ flex: 1, margin: 0 }}>
-            <Label>Antes</Label>
-            <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}`, cursor: h.fotoAntes ? "zoom-in" : "default" }}
-              onClick={() => h.fotoAntes && setZoomSrc(h.fotoAntes)}>
-              {h.fotoAntes ? <img src={h.fotoAntes} alt="Antes" style={{ height: "100%", width: "100%", objectFit: "cover" }} /> : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: C.grey }}><ImageIcon size={22} /></div>}
+        {esMobile ? (
+          /* MOBILE: orden y disposición como estaba (fotos → pills → campos → desc → comentarios) */
+          <>
+            {bFotos}
+            {bPills}
+            {bCamposMobile}
+            {bDesc}
+            {bComent}
+          </>
+        ) : (
+          /* PC: split 70% fotos / 30% campos; descripción y comentarios debajo a todo el ancho */
+          <>
+            {bPills}
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+              <div style={{ flex: "0 0 70%", maxWidth: "70%", minWidth: 0 }}>{bFotos}</div>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>{bCamposPC}</div>
             </div>
-          </figure>
-          <figure style={{ flex: 1, margin: 0 }}>
-            <Label>Después</Label>
-            <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, cursor: h.fotoDespues ? "zoom-in" : "default" }}
-              onClick={() => h.fotoDespues ? setZoomSrc(h.fotoDespues) : (!cerrado && refDespues.current?.click())}>
-              {h.fotoDespues
-                ? <img src={h.fotoDespues} alt="Después" style={{ height: "100%", width: "100%", objectFit: "cover" }} />
-                : <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: C.muted, opacity: cerrado ? .4 : 1 }}>
-                    <Camera size={22} /><span style={{ fontSize: 11 }}>Capturar o galería</span></div>}
-            </div>
-            <input ref={refDespues} type="file" accept="image/*" style={{ display: "none" }}
-              onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => attachDespues(r.result); r.readAsDataURL(f); }} />
-          </figure>
-        </div>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <span style={{ borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 500, background: estadoPill[h.estado].bg, color: estadoPill[h.estado].fg }}>{h.estado}</span>
-          <span style={{ borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 500, background: "#fff", border: `1px solid ${C.border}`, color: critText[h.criticidad] }}>Criticidad {h.criticidad || "Sin clasificar"}</span>
-          {incompleto({ ...h, descripcion: desc }) && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontWeight: 500, background: "#FFF7ED", color: "#B45309" }}><AlertTriangle size={13} /> Por completar</span>}
-        </div>
-
-        {/* Edición de datos */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div className="rec-2col">
-            <div><Label>Relevado por</Label><PersonaCombo value={h.relevadoPor} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, relevadoPor: v })} placeholder="Elegir o escribir…" options={PERSONAS} /></div>
-            <div><Label>Sector</Label><Select value={h.sector} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sector: v })} placeholder="Elegir…" options={SECTORES} /></div>
-            <div><Label>Responsable</Label><Select value={h.responsable} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, responsable: v })} placeholder="Elegir…" options={PERSONAS} /></div>
-            <div><Label>Sector responsable</Label><Select value={h.sectorResp} onChange={(v) => onUpdate({ ...h, descripcion: desc, comentarios: coment, sectorResp: v })} placeholder="Elegir…" options={SECTOR_RESP} /></div>
-          </div>
-          <div>
-            <Label>Criticidad</Label>
-            <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-              {CRITICIDADES.map((c) => { const active = h.criticidad === c;
-                return <button key={c} onClick={() => onUpdate({ ...h, descripcion: desc, comentarios: coment, criticidad: active ? "" : c })}
-                  style={{ borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 500, cursor: "pointer", border: active ? "1px solid transparent" : `1px solid ${C.border}`, background: active ? critColor[c] : C.card, color: active ? "#fff" : C.ink }}>{c}</button>; })}
-            </div>
-          </div>
-          <div><Label>Descripción</Label><textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Qué corresponde corregir…" style={{ ...fieldStyle, resize: "none" }} /></div>
-          <div><Label>Comentarios (los completa el responsable)</Label><textarea rows={3} value={coment} onChange={(e) => setComent(e.target.value)} placeholder="Avance, cotizaciones, motivo si no aplica…" style={{ ...fieldStyle, resize: "none" }} /></div>
-        </div>
-
-        {/* Marcar en curso + No aplica (dentro del scroll, por encima del footer) */}
-        {!cerrado && h.estado === "No comenzado" && (
-          <button onClick={() => patch({ estado: "En curso" })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.amber}`, background: "#FFF7ED", color: "#B45309", padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>Marcar «En curso»</button>
+            {bDesc}
+            {bComent}
+          </>
         )}
-        {!cerrado && (
-          <button onClick={() => patch({ estado: "No aplica", fechaCierre: hoy() })} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.muted, padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer" }}><Ban size={16} /> No aplica (descartar)</button>
-        )}
-        {h.estado === "Finalizado" && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#F0FDF4", color: "#15803D", borderRadius: 8, padding: "12px 0", fontSize: 14 }}><Check size={17} /> Hallazgo resuelto</div>}
-        {h.estado === "No aplica" && <button onClick={() => patch({ estado: "No comenzado", fechaCierre: null })} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.muted, padding: "10px 0", fontSize: 14, cursor: "pointer" }}>Reactivar hallazgo</button>}
+
+        {/* Marcar en curso + No aplica + estado (dentro del scroll, por encima del footer) */}
+        {bAcciones}
       </div>
 
       {/* Footer sticky: aviso + foto después + guardar/finalizar — siempre visible */}
@@ -284,7 +341,7 @@ function Detalle({ h, onClose, onUpdate }) {
         <footer style={{ borderTop: `1px solid ${C.border}`, background: C.card, flexShrink: 0 }}>
           {faltan.length > 0 && (
             <div style={{ background: "#FFF7ED", borderBottom: `1px solid #FDE68A`, padding: "6px 16px", fontSize: 12, color: "#B45309", display: "flex", gap: 6, alignItems: "center" }}>
-              <AlertTriangle size={13} /> Falta: {faltan.map((k) => ({ sector: "sector", responsable: "responsable", criticidad: "criticidad", descripcion: "descripción" }[k])).join(", ")}
+              <AlertTriangle size={13} /> Falta: {faltan.map((k) => ({ sector: "sector", responsable: "responsable", criticidad: "criticidad", comentarios: "comentario final" }[k])).join(", ")}
             </div>
           )}
           <div style={{ padding: "10px 16px", display: "flex", gap: 8 }}>
