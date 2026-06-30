@@ -231,10 +231,10 @@ function Detalle({ h, onClose, onUpdate }) {
       <figure style={{ flex: 1, margin: 0 }}>
         <Label>Después</Label>
         <div style={{ marginTop: 4, aspectRatio: "4/3", overflow: "hidden", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, cursor: h.fotoDespues ? "zoom-in" : "default" }}
-          onClick={() => h.fotoDespues ? setZoomSrc(h.fotoDespues) : (!cerrado && refDespues.current?.click())}>
+          onClick={() => h.fotoDespues ? setZoomSrc(h.fotoDespues) : refDespues.current?.click()}>
           {h.fotoDespues
             ? <img src={h.fotoDespues} alt="Después" style={{ height: "100%", width: "100%", objectFit: "cover" }} />
-            : <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: C.muted, opacity: cerrado ? .4 : 1 }}>
+            : <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: C.muted }}>
                 <Camera size={22} /><span style={{ fontSize: 11 }}>Capturar o galería</span></div>}
         </div>
         <input ref={refDespues} type="file" accept="image/*" style={{ display: "none" }}
@@ -309,7 +309,7 @@ function Detalle({ h, onClose, onUpdate }) {
       </header>
 
       {/* Scroll area — padding-bottom para que No aplica no quede tapado por el footer */}
-      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: 16, paddingBottom: cerrado ? 16 : 100, display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: 16, paddingBottom: 100, display: "flex", flexDirection: "column", gap: 16 }}>
         {esMobile ? (
           /* MOBILE: orden y disposición como estaba (fotos → pills → campos → desc → comentarios) */
           <>
@@ -337,7 +337,7 @@ function Detalle({ h, onClose, onUpdate }) {
       </div>
 
       {/* Footer sticky: aviso + foto después + guardar/finalizar — siempre visible */}
-      {!cerrado && (
+      {!cerrado ? (
         <footer style={{ borderTop: `1px solid ${C.border}`, background: C.card, flexShrink: 0 }}>
           {faltan.length > 0 && (
             <div style={{ background: "#FFF7ED", borderBottom: `1px solid #FDE68A`, padding: "6px 16px", fontSize: 12, color: "#B45309", display: "flex", gap: 6, alignItems: "center" }}>
@@ -352,6 +352,16 @@ function Detalle({ h, onClose, onUpdate }) {
             <button onClick={finalizar} disabled={faltan.length > 0}
               style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 8, border: "none", padding: "11px 0", fontSize: 13, fontWeight: 600, cursor: faltan.length > 0 ? "default" : "pointer", background: faltan.length > 0 ? C.amber : C.green, color: "#fff" }}>
               {faltan.length > 0 ? <><Save size={16} /> Guardar</> : <><Check size={16} /> Finalizar</>}
+            </button>
+          </div>
+        </footer>
+      ) : (
+        /* Cerrado (Finalizado / No aplica): se puede seguir agregando o cambiando la foto «después» sin reabrir el hallazgo */
+        <footer style={{ borderTop: `1px solid ${C.border}`, background: C.card, flexShrink: 0 }}>
+          <div style={{ padding: "10px 16px" }}>
+            <button onClick={() => refDespues.current?.click()}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 8, border: `1px solid ${C.blue}`, background: "#fff", color: C.blue, padding: "11px 0", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <Camera size={16} /> {h.fotoDespues ? "Cambiar foto después" : "Agregar foto después"}
             </button>
           </div>
         </footer>
