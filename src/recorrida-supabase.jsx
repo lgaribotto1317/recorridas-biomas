@@ -32,6 +32,11 @@ const ESTADOS = ["No comenzado", "En curso", "Finalizado", "No aplica"];
 const REQ = ["sector", "responsable", "criticidad", "descripcion"]; // requeridos: carga completa (tarjetas/Dashboard/Excel/filtro "Por completar")
 const REQ_FIN = ["sector", "responsable", "criticidad", "comentarios"]; // requeridos para FINALIZAR (caso B): obligatorios + comentario final, SIN descripción
 
+// Sólo estas personas (jefes/gerentes/directores) ven el gráfico "Por responsable" del Dashboard.
+const VE_RESPONSABLE = ["Carlos Rosic", "Sergio Parcheiczuk", "Leonardo Garibotto", "Fernando Alarcon"];
+const normNombre = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+const puedeVerResponsable = (nombre) => !!nombre && VE_RESPONSABLE.some((n) => normNombre(n) === normNombre(nombre));
+
 const critColor = { Baja: C.green, Media: C.amber, Alta: C.red, "": C.grey };
 const critText  = { Baja: "#15803D", Media: "#B45309", Alta: "#B91C1C", "": C.muted };
 const estadoPill = {
@@ -541,7 +546,7 @@ function BarCard({ title, data, colorFor, color, height, nota }) {
   );
 }
 
-function Tablero({ items }) {
+function Tablero({ items, me }) {
   const [desde, setDesde] = useState(""); const [hasta, setHasta] = useState("");
   const f = items.filter((h) => (!desde || h.fechaRegistro >= desde) && (!hasta || h.fechaRegistro <= hasta));
   const total = f.length;
@@ -592,7 +597,7 @@ function Tablero({ items }) {
         <BarCard title="Por estado" data={porEstado} colorFor={(n) => estadoColor[n]} />
         <BarCard title="Por criticidad" data={porCrit} colorFor={(n) => cc[n]} />
         <BarCard title="Por sector" data={porSector} nota="Top 5 sectores con más hallazgos" />
-        <BarCard title="Por responsable" data={porResp} nota="Top 5 responsables con más hallazgos" />
+        {puedeVerResponsable(me?.nombre) && <BarCard title="Por responsable" data={porResp} nota="Top 5 responsables con más hallazgos" />}
         <BarCard title="Por área responsable" data={porArea} />
       </div>
     </div>
@@ -1135,7 +1140,7 @@ export default function App() {
       </>}
 
       {tab === "planilla" && <main style={{ flex: 1, overflow: "hidden" }}><Planilla items={items} onUpdate={upd} /></main>}
-      {tab === "tablero" && <main style={{ flex: 1, overflowY: "auto" }}><Tablero items={items} /></main>}
+      {tab === "tablero" && <main style={{ flex: 1, overflowY: "auto" }}><Tablero items={items} me={me} /></main>}
       {tab === "trazabilidad" && <main style={{ flex: 1, overflow: "hidden" }}><Trazabilidad items={audit} /></main>}
 
       <nav className="rec-nav">
