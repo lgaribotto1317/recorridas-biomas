@@ -51,6 +51,7 @@ function rowToUi(h, m, fotosByH) {
     comentarios: h.comentarios || "",
     fotoAntes: last("antes"),
     fotoDespues: last("despues"),
+    createdAt: h.created_at,
   };
 }
 
@@ -171,7 +172,7 @@ export async function currentPersona() {
   const user = u?.user;
   if (!user) return null;
   const { data } = await supabase.from("personas").select("nombre").eq("user_id", user.id).maybeSingle();
-  return { nombre: data?.nombre || null, email: user.email };
+  return { nombre: data?.nombre || null, email: user.email, userId: user.id };
 }
 
 // Cambiar la contraseña del usuario logueado (no usa mail)
@@ -200,4 +201,31 @@ export function subscribeAuditoria(onChange) {
     .on("postgres_changes", { event: "*", schema: "recorridas", table: "auditoria" }, onChange)
     .subscribe();
   return () => supabase.removeChannel(ch);
+}
+
+// ---------- Vistas de usuario (aviso de hallazgos nuevos) ----------
+// Lee la marca de "última vez que el usuario vio la sección Hallazgos".
+// Devuelve un ISO timestamp, o null si el usuario nunca la vio (primera vez).
+export async function getUltimaVista() {
+  const { data: u } = await supabase.auth.getUser();
+  const user = u?.user;
+  if (!user) return null;
+  const { data } = await supabase
+    .from("vistas_usuario")
+    .select("ultima_vista_hallazgos")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return data?.ultima_vista_hallazgos || null;
+}
+
+// Marca "ahora" como última vista de Hallazgos para el usuario logueado.
+// Upsert: crea la fila la primera vez, actualiza después.
+export async function marcarVistoHallazgos() {
+  const { data: u } = await supabase.auth.getUser();
+  const user = u?.user;
+  if (!user) return;
+  const { error } = await supabase
+    .from("vistas_usuario")
+    .upsert({ user_id: user.id, ultima_vista_hallazgos: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) console.error("marcarVistoHallazgos", error);
 }

@@ -593,7 +593,7 @@ function Kanban({ items, onOpen }) {
 }
 
 /* ───────── App ───────── */
-const F0 = { q: "", estado: "Todos", sector: "Todos", sectorResp: "Todos", responsable: "Todos", criticidad: "Todos", soloIncompletos: false, desde: "", hasta: "" };
+const F0 = { q: "", estado: "Todos", sector: "Todos", sectorResp: "Todos", responsable: "Todos", criticidad: "Todos", soloIncompletos: false, soloNuevos: false, desde: "", hasta: "" };
 
 /* ───────── Trazabilidad (audit log) ───────── */
 function Trazabilidad({ items }) {
@@ -872,12 +872,30 @@ export default function App() {
     return off;
   }, [sess]);
   const [tab, setTab] = useState("recorrida");
+  // Aviso de hallazgos nuevos (criterio B): set congelado al entrar a Hallazgos
+  const [nuevosIds, setNuevosIds] = useState(() => new Set());
+  const vistaTomada = useRef(false);
+
+  // Al entrar a Hallazgos con datos cargados: tomar UNA foto de los "nuevos"
+  // (createdAt > última vista) y marcar visto en segundo plano.
+  useEffect(() => {
+    if (tab !== "recorrida" || cargando || vistaTomada.current) return;
+    vistaTomada.current = true;
+    api.getUltimaVista().then((ultima) => {
+      if (ultima) {
+        const ids = items.filter((h) => h.createdAt && h.createdAt > ultima).map((h) => h.id);
+        setNuevosIds(new Set(ids));
+      } // primera vez (ultima=null): todo ya visto -> set vacío
+      api.marcarVistoHallazgos();
+    }).catch((e) => console.error("vista", e));
+  }, [tab, cargando, items]);
+
   const [flt, setFlt] = useState(F0);
   const [openFilters, setOpenFilters] = useState(false);
   const [nuevo, setNuevo] = useState(false);
   const [sel, setSel] = useState(null);
   const set = (k, v) => setFlt((p) => ({ ...p, [k]: v }));
-  const activos = ["sector", "sectorResp", "responsable", "criticidad"].filter((k) => flt[k] !== "Todos").length + (flt.desde ? 1 : 0) + (flt.hasta ? 1 : 0) + (flt.soloIncompletos ? 1 : 0);
+  const activos = ["sector", "sectorResp", "responsable", "criticidad"].filter((k) => flt[k] !== "Todos").length + (flt.desde ? 1 : 0) + (flt.hasta ? 1 : 0) + (flt.soloIncompletos ? 1 : 0) + (flt.soloNuevos ? 1 : 0);
 
   const lista = items.filter((h) => {
     const q = flt.q.trim().toLowerCase();
@@ -889,6 +907,7 @@ export default function App() {
       && (flt.responsable === "Todos" || h.responsable === flt.responsable)
       && (flt.criticidad === "Todos" || (h.criticidad || "Sin clasificar") === flt.criticidad)
       && (!flt.soloIncompletos || incompleto(h))
+      && (!flt.soloNuevos || nuevosIds.has(h.id))
       && (!flt.desde || h.fechaRegistro >= flt.desde) && (!flt.hasta || h.fechaRegistro <= flt.hasta);
   }).sort((a, b) => b.fechaRegistro.localeCompare(a.fechaRegistro));
 
@@ -1039,6 +1058,9 @@ export default function App() {
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.ink, cursor: "pointer" }}>
             <input type="checkbox" checked={flt.soloIncompletos} onChange={(e) => set("soloIncompletos", e.target.checked)} /> Solo por completar
           </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.ink, cursor: nuevosIds.size ? "pointer" : "default", opacity: nuevosIds.size ? 1 : .5 }}>
+            <input type="checkbox" checked={flt.soloNuevos} disabled={!nuevosIds.size} onChange={(e) => set("soloNuevos", e.target.checked)} /> Solo nuevos{nuevosIds.size ? ` (${nuevosIds.size})` : ""}
+          </label>
           {(activos > 0 || flt.q) && <button onClick={() => setFlt(F0)} style={{ alignSelf: "flex-start", fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer" }}>Limpiar filtros</button>}
         </div>}
 
@@ -1051,8 +1073,12 @@ export default function App() {
 
       <nav className="rec-nav">
         {[["recorrida", "Hallazgos", ClipboardList], ["planilla", "Planilla", Table2], ["tablero", "Dashboard", BarChart3], ["trazabilidad", "Historial", History]].map(([k, label, Icon]) => (
-          <button key={k} onClick={() => setTab(k)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "9px 0", fontSize: 11, fontWeight: 500, border: "none", background: "none", cursor: "pointer", color: tab === k ? C.blue : C.muted }}>
-            <Icon size={20} /> {label}</button>
+          <button key={k} onClick={() => setTab(k)} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "9px 0", fontSize: 11, fontWeight: 500, border: "none", background: "none", cursor: "pointer", color: tab === k ? C.blue : C.muted }}>
+            <span style={{ position: "relative", display: "inline-flex" }}>
+              <Icon size={20} />
+              {k === "recorrida" && nuevosIds.size > 0 && <span style={{ position: "absolute", top: -5, right: -9, minWidth: 15, height: 15, padding: "0 3px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 999, background: C.orange, fontSize: 9, fontWeight: 700, color: "#fff", lineHeight: 1 }}>{nuevosIds.size}</span>}
+            </span>
+            {label}</button>
         ))}
       </nav>
 
