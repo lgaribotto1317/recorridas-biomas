@@ -1002,9 +1002,10 @@ export default function App() {
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Recorrida"); XLSX.writeFile(wb, "recorrida_biomas.xlsx");
   };
 
-  const fSelStyle = { borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "8px", fontSize: 13, outline: "none", appearance: "none" };
-  const FSel = ({ k, label, opts }) => (
-    <select value={flt[k]} onChange={(e) => set(k, e.target.value)} style={{ ...fSelStyle, color: flt[k] === "Todos" ? C.muted : C.ink }}>
+  const chev = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")";
+  const fSelStyle = { height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, backgroundImage: chev, backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", padding: "0 26px 0 9px", fontSize: 13, outline: "none", appearance: "none", cursor: "pointer" };
+  const FSel = ({ k, label, opts, w }) => (
+    <select value={flt[k]} onChange={(e) => set(k, e.target.value)} style={{ ...fSelStyle, minWidth: w || 108, color: flt[k] === "Todos" ? C.muted : C.ink }}>
       <option value="Todos">{label}</option>{opts.map((o) => <option key={o} value={o} style={{ color: C.ink }}>{o}</option>)}
     </select>
   );
@@ -1104,37 +1105,28 @@ export default function App() {
       {showPass && <ChangePassword onClose={() => setShowPass(false)} />}
 
       {tab === "recorrida" && <>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 12px 0" }}>
-          <div style={{ position: "relative", flex: 1 }}>
-            <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: C.muted, pointerEvents: "none" }} />
-            <input value={flt.q} onChange={(e) => set("q", e.target.value)} placeholder="Buscar descripción, responsable, sector…"
-              style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "8px 12px 8px 32px", fontSize: 14, color: C.ink, outline: "none" }} />
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "12px 12px 0" }}>
+          <div style={{ position: "relative", flex: "1 1 150px", minWidth: 140 }}>
+            <Search size={15} style={{ position: "absolute", left: 10, top: 9, color: C.muted, pointerEvents: "none" }} />
+            <input value={flt.q} onChange={(e) => set("q", e.target.value)} placeholder="Buscar…"
+              style={{ width: "100%", boxSizing: "border-box", height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px 0 30px", fontSize: 13, color: C.ink, outline: "none" }} />
           </div>
-          <button onClick={() => setOpenFilters((v) => !v)} style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, borderRadius: 8, border: `1px solid ${openFilters || activos ? C.blue : C.border}`, background: C.card, padding: "8px 10px", fontSize: 12, color: openFilters || activos ? C.blue : C.ink, cursor: "pointer" }}>
-            <SlidersHorizontal size={15} />
-            {activos > 0 && <span style={{ position: "absolute", right: -6, top: -6, height: 16, width: 16, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 999, background: C.orange, fontSize: 10, fontWeight: 700, color: "#fff" }}>{activos}</span>}
+          <FSel k="sector" label="Sector" opts={SECTORES} w={96} />
+          <FSel k="sectorResp" label="Sector resp." opts={SECTOR_RESP} w={124} />
+          <FSel k="responsable" label="Responsable" opts={PERSONAS} w={118} />
+          <FSel k="criticidad" label="Criticidad" opts={[...CRITICIDADES, "Sin clasificar"]} w={104} />
+          <input type="date" value={flt.desde} onChange={(e) => set("desde", e.target.value)} title="Desde"
+            style={{ height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, color: flt.desde ? C.ink : C.muted, outline: "none" }} />
+          <input type="date" value={flt.hasta} onChange={(e) => set("hasta", e.target.value)} title="Hasta"
+            style={{ height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, color: flt.hasta ? C.ink : C.muted, outline: "none" }} />
+          <button onClick={() => nuevosIds.size && set("soloNuevos", !flt.soloNuevos)} disabled={!nuevosIds.size}
+            style={{ height: 34, display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "0 12px", fontSize: 12.5, whiteSpace: "nowrap", cursor: nuevosIds.size ? "pointer" : "default", border: `1px solid ${flt.soloNuevos ? C.blue : C.border}`, background: flt.soloNuevos ? "#E6F1FB" : C.card, color: flt.soloNuevos ? C.blueD : C.ink, opacity: nuevosIds.size ? 1 : .5 }}>
+            Solo nuevos{nuevosIds.size ? ` (${nuevosIds.size})` : ""}
           </button>
+          {(activos > 0 || flt.q) && <button onClick={() => setFlt(F0)} style={{ fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>Limpiar</button>}
         </div>
 
         <button onClick={() => setNuevo(true)} className="rec-newbtn" style={{ margin: "8px 12px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, border: "none", background: C.blue, color: "#fff", padding: "11px 0", fontSize: 14, fontWeight: 600, cursor: "pointer" }}><Plus size={18} /> Nuevo hallazgo</button>
-
-        {openFilters && <div style={{ margin: "8px 12px 0", borderRadius: 10, border: `1px solid ${C.border}`, background: C.card, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="rec-fgrid">
-            <FSel k="sector" label="Sector" opts={SECTORES} />
-            <FSel k="sectorResp" label="Sector responsable" opts={SECTOR_RESP} />
-            <FSel k="responsable" label="Responsable" opts={PERSONAS} />
-            <FSel k="criticidad" label="Criticidad" opts={[...CRITICIDADES, "Sin clasificar"]} />
-            <div><Label>Desde</Label><input type="date" value={flt.desde} onChange={(e) => set("desde", e.target.value)} style={{ ...fSelStyle, marginTop: 4, width: "100%" }} /></div>
-            <div><Label>Hasta</Label><input type="date" value={flt.hasta} onChange={(e) => set("hasta", e.target.value)} style={{ ...fSelStyle, marginTop: 4, width: "100%" }} /></div>
-          </div>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.ink, cursor: "pointer" }}>
-            <input type="checkbox" checked={flt.soloIncompletos} onChange={(e) => set("soloIncompletos", e.target.checked)} /> Solo por completar
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.ink, cursor: nuevosIds.size ? "pointer" : "default", opacity: nuevosIds.size ? 1 : .5 }}>
-            <input type="checkbox" checked={flt.soloNuevos} disabled={!nuevosIds.size} onChange={(e) => set("soloNuevos", e.target.checked)} /> Solo nuevos{nuevosIds.size ? ` (${nuevosIds.size})` : ""}
-          </label>
-          {(activos > 0 || flt.q) && <button onClick={() => setFlt(F0)} style={{ alignSelf: "flex-start", fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer" }}>Limpiar filtros</button>}
-        </div>}
 
         <Kanban items={lista} onOpen={setSel} />
       </>}
