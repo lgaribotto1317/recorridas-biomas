@@ -29,6 +29,7 @@ const PERSONAS = [
 ]; // relevadores y responsables salen de la misma lista por ahora
 const CRITICIDADES = ["Baja", "Media", "Alta"];
 const ESTADOS = ["No comenzado", "En curso", "Finalizado", "No aplica"];
+const ESTADOS_KANBAN = ["No comenzado", "En curso", "Finalizado"]; // "No aplica" va a su propia pestaña
 const REQ = ["sector", "responsable", "criticidad", "descripcion"]; // requeridos: carga completa (tarjetas/Dashboard/Excel/filtro "Por completar")
 const REQ_FIN = ["sector", "responsable", "criticidad", "comentarios"]; // requeridos para FINALIZAR (caso B): obligatorios + comentario final, SIN descripción
 
@@ -634,16 +635,16 @@ function Kanban({ items, onOpen }) {
   const onScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    const colW = el.scrollWidth / ESTADOS.length;
+    const colW = el.scrollWidth / ESTADOS_KANBAN.length;
     setColIdx(Math.round(el.scrollLeft / colW));
   };
 
   return (
     <div className="rec-kanban-wrap">
       {colIdx > 0 && <div className="rec-kanban-arrow rec-kanban-arrow-l">‹</div>}
-      {colIdx < ESTADOS.length - 1 && <div className="rec-kanban-arrow rec-kanban-arrow-r">›</div>}
+      {colIdx < ESTADOS_KANBAN.length - 1 && <div className="rec-kanban-arrow rec-kanban-arrow-r">›</div>}
       <div ref={scrollRef} className="rec-kanban" style={{ flex: 1, minHeight: 0 }} onScroll={onScroll}>
-        {ESTADOS.map((e) => {
+        {ESTADOS_KANBAN.map((e) => {
           const col = items.filter((h) => h.estado === e);
           const color = estadoColor[e];
           return (
@@ -660,6 +661,20 @@ function Kanban({ items, onOpen }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ───────── Vista No aplica (hallazgos descartados) ───────── */
+function NoAplica({ items, onOpen }) {
+  const col = items.filter((h) => h.estado === "No aplica").sort((a, b) => (b.fechaCierre || "").localeCompare(a.fechaCierre || ""));
+  return (
+    <div style={{ height: "100%", overflowY: "auto", padding: 12 }}>
+      {col.length === 0
+        ? <p style={{ textAlign: "center", color: C.muted, fontSize: 13, padding: "32px 0" }}>No hay hallazgos marcados como «No aplica».</p>
+        : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 8, maxWidth: 1100, margin: "0 auto" }}>
+            {col.map((h) => <HallazgoCard key={h.id} h={h} onClick={() => onOpen(h)} showEstado={false} />)}
+          </div>}
     </div>
   );
 }
@@ -1056,7 +1071,7 @@ export default function App() {
           background:#EEF2F6; border-radius:10px;
         }
         @media(min-width:640px){
-          .rec-kanban-col{ flex:1 1 270px; max-width:460px; }
+          .rec-kanban-col{ flex:1 1 0; max-width:none; }
         }
         /* flechas laterales kanban (solo mobile) */
         .rec-kanban-wrap{ position:relative; flex:1; min-height:0; display:flex; flex-direction:column; }
@@ -1084,7 +1099,7 @@ export default function App() {
         @media(min-width:640px){ .rec-username{ display:flex; } }
         /* ── Nav: padding-bottom safe area iOS ── */
         .rec-nav{
-          display:grid; grid-template-columns:repeat(4,1fr);
+          display:grid; grid-template-columns:repeat(5,1fr);
           border-top:1px solid ${C.border}; background:${C.card};
           padding-bottom:env(safe-area-inset-bottom,0px);
         }
@@ -1133,10 +1148,11 @@ export default function App() {
 
       {tab === "planilla" && <main style={{ flex: 1, overflow: "hidden" }}><Planilla items={items} onUpdate={upd} /></main>}
       {tab === "tablero" && <main style={{ flex: 1, overflowY: "auto" }}><Tablero items={items} me={me} /></main>}
+      {tab === "noaplica" && <main style={{ flex: 1, overflow: "hidden" }}><NoAplica items={items} onOpen={setSel} /></main>}
       {tab === "trazabilidad" && <main style={{ flex: 1, overflow: "hidden" }}><Trazabilidad items={audit} /></main>}
 
       <nav className="rec-nav">
-        {[["recorrida", "Hallazgos", ClipboardList], ["planilla", "Planilla", Table2], ["tablero", "Dashboard", BarChart3], ["trazabilidad", "Historial", History]].map(([k, label, Icon]) => (
+        {[["recorrida", "Hallazgos", ClipboardList], ["planilla", "Planilla", Table2], ["tablero", "Dashboard", BarChart3], ["noaplica", "No aplica", Ban], ["trazabilidad", "Historial", History]].map(([k, label, Icon]) => (
           <button key={k} onClick={() => setTab(k)} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "9px 0", fontSize: 11, fontWeight: 500, border: "none", background: "none", cursor: "pointer", color: tab === k ? C.blue : C.muted }}>
             <span style={{ position: "relative", display: "inline-flex" }}>
               <Icon size={20} />
