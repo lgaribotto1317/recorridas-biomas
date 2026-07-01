@@ -1120,7 +1120,7 @@ export default function App() {
           <input type="date" value={flt.hasta} onChange={(e) => set("hasta", e.target.value)} title="Hasta"
             style={{ height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, color: flt.hasta ? C.ink : C.muted, outline: "none" }} />
           <button onClick={() => nuevosIds.size && set("soloNuevos", !flt.soloNuevos)} disabled={!nuevosIds.size}
-            style={{ height: 34, display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "0 12px", fontSize: 12.5, whiteSpace: "nowrap", cursor: nuevosIds.size ? "pointer" : "default", border: `1px solid ${flt.soloNuevos ? C.blue : C.border}`, background: flt.soloNuevos ? "#E6F1FB" : C.card, color: flt.soloNuevos ? C.blueD : C.ink, opacity: nuevosIds.size ? 1 : .5 }}>
+            style={{ height: 34, display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "0 12px", fontSize: 12.5, fontWeight: nuevosIds.size ? 500 : 400, whiteSpace: "nowrap", cursor: nuevosIds.size ? "pointer" : "default", border: `1px solid ${flt.soloNuevos ? C.blue : (nuevosIds.size ? C.orange : C.border)}`, background: flt.soloNuevos ? "#E6F1FB" : (nuevosIds.size ? "#FDECE0" : C.card), color: flt.soloNuevos ? C.blueD : (nuevosIds.size ? C.orange : C.ink), opacity: nuevosIds.size ? 1 : .5 }}>
             Solo nuevos{nuevosIds.size ? ` (${nuevosIds.size})` : ""}
           </button>
           {(activos > 0 || flt.q) && <button onClick={() => setFlt(F0)} style={{ fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>Limpiar</button>}
