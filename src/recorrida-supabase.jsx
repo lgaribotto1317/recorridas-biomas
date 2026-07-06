@@ -1045,16 +1045,30 @@ export default function App() {
         style={{ width: "100%", boxSizing: "border-box", height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px 0 30px", fontSize: 13, color: C.ink, outline: "none" }} />
     </div>
   );
-  const camposFiltro = (
+  const selectsFiltro = (
     <>
       <FSel k="sector" label="Sector" opts={SECTORES} w={96} />
       <FSel k="sectorResp" label="Sector resp." opts={SECTOR_RESP} w={124} />
       <FSel k="responsable" label="Responsable" opts={PERSONAS} w={118} />
       <FSel k="criticidad" label="Criticidad" opts={[...CRITICIDADES, "Sin clasificar"]} w={104} />
-      <input type="date" value={flt.desde} onChange={(e) => set("desde", e.target.value)} title="Desde"
-        style={{ height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, color: flt.desde ? C.ink : C.muted, outline: "none" }} />
-      <input type="date" value={flt.hasta} onChange={(e) => set("hasta", e.target.value)} title="Hasta"
-        style={{ height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, color: flt.hasta ? C.ink : C.muted, outline: "none" }} />
+    </>
+  );
+  const dateStyle = { height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, outline: "none" };
+  const fechasPC = (
+    <>
+      <input type="date" value={flt.desde} onChange={(e) => set("desde", e.target.value)} title="Desde" style={{ ...dateStyle, color: flt.desde ? C.ink : C.muted }} />
+      <input type="date" value={flt.hasta} onChange={(e) => set("hasta", e.target.value)} title="Hasta" style={{ ...dateStyle, color: flt.hasta ? C.ink : C.muted }} />
+    </>
+  );
+  const lblFecha = { display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: C.muted };
+  const fechasMobile = (
+    <>
+      <label style={lblFecha}>Fecha desde
+        <input type="date" value={flt.desde} onChange={(e) => set("desde", e.target.value)} style={{ ...dateStyle, width: "100%", color: flt.desde ? C.ink : C.muted }} />
+      </label>
+      <label style={lblFecha}>Fecha hasta
+        <input type="date" value={flt.hasta} onChange={(e) => set("hasta", e.target.value)} style={{ ...dateStyle, width: "100%", color: flt.hasta ? C.ink : C.muted }} />
+      </label>
     </>
   );
   const botonNuevos = (
@@ -1169,7 +1183,8 @@ export default function App() {
             </div>
             {openFilters && (
               <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {camposFiltro}
+                {selectsFiltro}
+                {fechasMobile}
                 {botonLimpiar && <div style={{ gridColumn: "1 / -1", textAlign: "right" }}>{botonLimpiar}</div>}
               </div>
             )}
@@ -1177,7 +1192,8 @@ export default function App() {
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "12px 12px 0" }}>
             {busqueda}
-            {camposFiltro}
+            {selectsFiltro}
+            {fechasPC}
             {botonNuevos}
             {botonLimpiar}
           </div>
