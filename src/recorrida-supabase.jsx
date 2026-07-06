@@ -979,6 +979,13 @@ export default function App() {
 
   const [flt, setFlt] = useState(F0);
   const [openFilters, setOpenFilters] = useState(false);
+  const [esMobile, setEsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width:639px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width:639px)");
+    const h = (e) => setEsMobile(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
   const [nuevo, setNuevo] = useState(false);
   const [sel, setSel] = useState(null);
   const set = (k, v) => setFlt((p) => ({ ...p, [k]: v }));
@@ -1029,6 +1036,36 @@ export default function App() {
     <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: C.page, color: C.muted, fontFamily: FONT, fontSize: 14 }}>Cargando…</div>
   );
   if (sess === null) return <Login />;
+
+  const activosPanel = ["sector", "sectorResp", "responsable", "criticidad"].filter((k) => flt[k] !== "Todos").length + (flt.desde ? 1 : 0) + (flt.hasta ? 1 : 0);
+  const busqueda = (
+    <div style={{ position: "relative", flex: "1 1 90px", minWidth: 0 }}>
+      <Search size={15} style={{ position: "absolute", left: 10, top: 9, color: C.muted, pointerEvents: "none" }} />
+      <input value={flt.q} onChange={(e) => set("q", e.target.value)} placeholder="Buscar…"
+        style={{ width: "100%", boxSizing: "border-box", height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px 0 30px", fontSize: 13, color: C.ink, outline: "none" }} />
+    </div>
+  );
+  const camposFiltro = (
+    <>
+      <FSel k="sector" label="Sector" opts={SECTORES} w={96} />
+      <FSel k="sectorResp" label="Sector resp." opts={SECTOR_RESP} w={124} />
+      <FSel k="responsable" label="Responsable" opts={PERSONAS} w={118} />
+      <FSel k="criticidad" label="Criticidad" opts={[...CRITICIDADES, "Sin clasificar"]} w={104} />
+      <input type="date" value={flt.desde} onChange={(e) => set("desde", e.target.value)} title="Desde"
+        style={{ height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, color: flt.desde ? C.ink : C.muted, outline: "none" }} />
+      <input type="date" value={flt.hasta} onChange={(e) => set("hasta", e.target.value)} title="Hasta"
+        style={{ height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, color: flt.hasta ? C.ink : C.muted, outline: "none" }} />
+    </>
+  );
+  const botonNuevos = (
+    <button onClick={() => nuevosIds.size && set("soloNuevos", !flt.soloNuevos)} disabled={!nuevosIds.size}
+      style={{ height: 34, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "0 12px", fontSize: 12.5, fontWeight: nuevosIds.size ? 500 : 400, whiteSpace: "nowrap", cursor: nuevosIds.size ? "pointer" : "default", border: `1px solid ${flt.soloNuevos ? C.blue : (nuevosIds.size ? C.orange : C.border)}`, background: flt.soloNuevos ? "#E6F1FB" : (nuevosIds.size ? "#FDECE0" : C.card), color: flt.soloNuevos ? C.blueD : (nuevosIds.size ? C.orange : C.ink), opacity: nuevosIds.size ? 1 : .5 }}>
+      Solo nuevos{nuevosIds.size ? ` (${nuevosIds.size})` : ""}
+    </button>
+  );
+  const botonLimpiar = (activos > 0 || flt.q)
+    ? <button onClick={() => setFlt(F0)} style={{ fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>Limpiar</button>
+    : null;
 
   return (
     <div style={{ position: "relative", margin: "0 auto", width: "100%", maxWidth: "100%", height: "100dvh", display: "flex", flexDirection: "column", background: C.page, color: C.ink, fontFamily: FONT }}>
@@ -1120,26 +1157,31 @@ export default function App() {
       {showPass && <ChangePassword onClose={() => setShowPass(false)} />}
 
       {tab === "recorrida" && <>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "12px 12px 0" }}>
-          <div style={{ position: "relative", flex: "1 1 150px", minWidth: 140 }}>
-            <Search size={15} style={{ position: "absolute", left: 10, top: 9, color: C.muted, pointerEvents: "none" }} />
-            <input value={flt.q} onChange={(e) => set("q", e.target.value)} placeholder="Buscar…"
-              style={{ width: "100%", boxSizing: "border-box", height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px 0 30px", fontSize: 13, color: C.ink, outline: "none" }} />
+        {esMobile ? (
+          <div style={{ padding: "12px 12px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {busqueda}
+              <button onClick={() => setOpenFilters((v) => !v)}
+                style={{ height: 34, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 8, padding: "0 12px", fontSize: 13, whiteSpace: "nowrap", cursor: "pointer", border: `1px solid ${(openFilters || activosPanel) ? C.blue : C.border}`, background: (openFilters || activosPanel) ? "#E6F1FB" : C.card, color: (openFilters || activosPanel) ? C.blueD : C.ink }}>
+                <SlidersHorizontal size={15} /> Filtro{activosPanel ? ` (${activosPanel})` : ""}
+              </button>
+              {botonNuevos}
+            </div>
+            {openFilters && (
+              <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {camposFiltro}
+                {botonLimpiar && <div style={{ gridColumn: "1 / -1", textAlign: "right" }}>{botonLimpiar}</div>}
+              </div>
+            )}
           </div>
-          <FSel k="sector" label="Sector" opts={SECTORES} w={96} />
-          <FSel k="sectorResp" label="Sector resp." opts={SECTOR_RESP} w={124} />
-          <FSel k="responsable" label="Responsable" opts={PERSONAS} w={118} />
-          <FSel k="criticidad" label="Criticidad" opts={[...CRITICIDADES, "Sin clasificar"]} w={104} />
-          <input type="date" value={flt.desde} onChange={(e) => set("desde", e.target.value)} title="Desde"
-            style={{ height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, color: flt.desde ? C.ink : C.muted, outline: "none" }} />
-          <input type="date" value={flt.hasta} onChange={(e) => set("hasta", e.target.value)} title="Hasta"
-            style={{ height: 34, boxSizing: "border-box", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, padding: "0 8px", fontSize: 12.5, color: flt.hasta ? C.ink : C.muted, outline: "none" }} />
-          <button onClick={() => nuevosIds.size && set("soloNuevos", !flt.soloNuevos)} disabled={!nuevosIds.size}
-            style={{ height: 34, display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "0 12px", fontSize: 12.5, fontWeight: nuevosIds.size ? 500 : 400, whiteSpace: "nowrap", cursor: nuevosIds.size ? "pointer" : "default", border: `1px solid ${flt.soloNuevos ? C.blue : (nuevosIds.size ? C.orange : C.border)}`, background: flt.soloNuevos ? "#E6F1FB" : (nuevosIds.size ? "#FDECE0" : C.card), color: flt.soloNuevos ? C.blueD : (nuevosIds.size ? C.orange : C.ink), opacity: nuevosIds.size ? 1 : .5 }}>
-            Solo nuevos{nuevosIds.size ? ` (${nuevosIds.size})` : ""}
-          </button>
-          {(activos > 0 || flt.q) && <button onClick={() => setFlt(F0)} style={{ fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>Limpiar</button>}
-        </div>
+        ) : (
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "12px 12px 0" }}>
+            {busqueda}
+            {camposFiltro}
+            {botonNuevos}
+            {botonLimpiar}
+          </div>
+        )}
 
         <button onClick={() => setNuevo(true)} className="rec-newbtn" style={{ margin: "8px 12px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 8, border: "none", background: C.blue, color: "#fff", padding: "11px 0", fontSize: 14, fontWeight: 600, cursor: "pointer" }}><Plus size={18} /> Nuevo hallazgo</button>
 
